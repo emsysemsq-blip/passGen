@@ -28,3 +28,12 @@ if ($LASTEXITCODE) { throw 'Checkpoint lock tests failed' }
 if ($LASTEXITCODE) { throw 'Checkpoint retry test build failed' }
 & ./dist/passgen-checkpoint-retry-tests.exe
 if ($LASTEXITCODE) { throw 'Checkpoint retry tests failed' }
+
+& g++ @flags -Isrc tests/resource_test.cpp -o dist/passgen-resource-tests.exe
+if ($LASTEXITCODE) { throw 'Resource test build failed' }
+& ./dist/passgen-resource-tests.exe
+if ($LASTEXITCODE) { throw 'Resource tests failed' }
+& g++ @flags -Isrc src/engine.cpp tests/resource_engine_test.cpp -o dist/passgen-resource-engine-tests.exe
+if ($LASTEXITCODE) { throw 'Resource engine test build failed' }
+& ./dist/passgen-resource-engine-tests.exe
+if ($LASTEXITCODE) { throw 'Resource engine tests failed' }

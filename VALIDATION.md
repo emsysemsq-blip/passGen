@@ -1,3 +1,17 @@
+# v0.1.8 validation
+
+- Linux engine: 62 checks passed. Resource discovery/planning tests passed, including CPU quota parsing, affinity, cgroup memory, overflow and live detection.
+- New resource-engine suite: 267 checks passed natively and with AddressSanitizer/UndefinedBehaviorSanitizer. Covers exact disk-byte prefixes below one line, at one line, in a worker and between workers; filters; Unicode byte widths; ambiguous-token uniqueness; repeated small-budget Resume; crash tails; schemas 1..3; missing resources and insufficient-memory refusal before output creation.
+- Native CPU measurements use a fixed one-core ResourceSnapshot fixture and 16,777,216 impossible-uppercase candidates. Target25%: process CPU/wall25.44%; target70%:69.82%. Sanitized run measured25.48% and70.34%. These include coordinator/setup CPU and are approximate, not real-time hard caps.
+- Live Linux detection: five affinity CPUs, four effective cores from cgroup quota. Auto70 selects three workers with per-workerCPUfraction0.933333, or2.8 cores of generation budget. RAM and disk available quantities are detected at the output location.
+- Windows x64 GUI/CLI/tests cross-compiled. Under Wine, core62, resource planning, resource engine267, GUI auto70/default/manual controls, Unicode generation, Stop/Resume and actual checkpoint-lock recovery passed. Wine reported five Windows-visible cores (Linux cgroup quota is not exposed by Wine's Windows APIs); its pacing samples were below target under host contention. No native Windows utilization claim.
+- Existing CLI suites passed: 16 word/rule/crash-replay cases, six extra-input oracles, huge-rank/legacy-upgrade tests and 38 exact baseline comparisons with varied workers and boundaries through2^128.
+- PASSGEN_4 persists resource percentage. Legacy schemas retain manual policy. Each Resume redetects resources and recalculates70% of current free disk space, so repeated Resume is not a permanent reserve of30% of the initial free space.
+- RAM policy budgets output buffers plus a planning allowance; it does not hard-limit total process memory or fill RAM to70%. CPU pacing controls worker generation time and does not control other apps, overall system CPU or disk I/O bandwidth. GPU execution remains unavailable.
+- The v0.1.7 speed benchmarks describe manual mode; the new Auto70 intentionally spends less CPU. No new maximum-speed claim or billion-line run was made for this version.
+
+Historical validation follows.
+
 # v0.1.7 validation
 
 - Linux engine suite: 62 checks passed; same 62 checks passed with AddressSanitizer and UndefinedBehaviorSanitizer.

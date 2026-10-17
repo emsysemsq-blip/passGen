@@ -1,3 +1,13 @@
+# 0.1.8
+
+- Detect effective CPU capacity, available RAM and output filesystem space before generation (Windows APIs; Linux affinity and cgroup v1/v2 limits).
+- Default GUI/CLI new jobs to Auto 70%: select worker count automatically and pace worker CPU time. RAM is a bounded buffer-planning ceiling, not deliberate memory filling or a whole-process hard cap.
+- Limit each run's new output to 70% of initial free disk space, stop before the first accepted line that cannot fit, and checkpoint only the exact contiguous scanned prefix. Resume recalculates current free-space budget.
+- Preserve exact deduplication and UTF-8, including partial worker results and Stop during CPU waits. Reject missing-resource/insufficient-RAM plans before creating files.
+- Add CLI --resource-percent 0..100. Explicit --threads retains manual mode unless resource percentage is also explicit; GUI manual mode remains available by clearing Auto 70%.
+- Save PASSGEN_4 policy metadata; read schemas 1..3 with their previous manual execution policy. Resource controls never change candidate order/alphabet.
+- GPU execution remains unsupported. CPU target is approximate worker-generation utilization, not a whole-system or real-time hard limit. Disk budget means bytes, not disk I/O load.
+
 # 0.1.7
 
 - Unrank once per bounded range and increment token digits; eliminate per-candidate arbitrary-precision division and segment/power reconstruction.

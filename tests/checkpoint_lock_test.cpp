@@ -38,7 +38,7 @@ int main(){namespace fs=std::filesystem;fs::path dir=fs::temp_directory_path()/(
  check(failed,"Persistent sharing violation must preserve the actual Windows error code");
  check(blocked.scanned.load()==0,"Uncommitted output must not advance confirmed progress");
  auto checkpoint=persistent;checkpoint+=L".pgstate";std::string committed=read(checkpoint);
- check(committed.find("PASSGEN_3\n0 0 0 ")==0,"Previous committed checkpoint was lost");
+ check(committed.find("PASSGEN_4\n0 0 0 ")==0,"Previous committed checkpoint was lost");
  check(!read(persistent).empty(),"Failure scenario did not write an uncommitted output tail");
  CloseHandle(locked);locked=INVALID_HANDLE_VALUE;
  pg::Progress resumed;pg::run({},persistent.u8string(),true,resumed);

@@ -8,3 +8,8 @@ ${CXX:-g++} -std=c++17 -O2 -Wall -Wextra -Wpedantic -pthread -Isrc src/engine.cp
 
 ${CXX:-g++} -std=c++17 -O2 -Wall -Wextra -Wpedantic -Isrc tests/checkpoint_retry_test.cpp -o build/checkpoint-retry-tests
 ./build/checkpoint-retry-tests
+
+${CXX:-g++} -std=c++17 -O2 -Wall -Wextra -Wpedantic -pthread -Isrc tests/resource_test.cpp -o build/resource-tests
+./build/resource-tests
+${CXX:-g++} -std=c++17 -O2 -Wall -Wextra -Wpedantic -pthread -Isrc src/engine.cpp tests/resource_engine_test.cpp -o build/resource-engine-tests
+./build/resource-engine-tests
