@@ -48,3 +48,8 @@ if ($LASTEXITCODE) { throw 'GPU tests failed' }
 if ($LASTEXITCODE) { throw 'GPU integration build failed' }
 & ./dist/passgen-gpu-engine-tests.exe
 if ($LASTEXITCODE) { throw 'GPU integration tests failed' }
+
+& g++ @flags -Isrc src/engine.cpp src/gpu.cpp tests/direct_combinations_test.cpp -o dist/passgen-direct-combinations-tests.exe
+if ($LASTEXITCODE) { throw 'Direct-combination test build failed' }
+& ./dist/passgen-direct-combinations-tests.exe
+if ($LASTEXITCODE) { throw 'Direct-combination tests failed' }

@@ -41,11 +41,11 @@ with tempfile.TemporaryDirectory(prefix='passgen-limits-') as folder:
         result = subprocess.run(args, capture_output=True, text=True)
         assert result.returncode == 0, result.stderr
         if caps:
-            assert "CPU: per-token repetition limits" in result.stderr
+            assert "CPU: direct word combinations" in result.stderr
         actual = path.read_text().splitlines()
         assert actual == expected, (tokens, caps, minimum, maximum, characters, adjacent, actual, expected)
         state = pathlib.Path(str(path) + '.pgstate')
-        assert state.read_text().startswith('PASSGEN_6\n')
+        assert state.read_text().startswith('PASSGEN_7\n')
         # A committed output ignores newly supplied CLI settings on Resume.
         with path.open('ab') as stream:
             stream.write(b'uncommitted crash tail\n')

@@ -19,3 +19,5 @@ resource_compiler="${WINDRES_WINDOWS:-x86_64-w64-mingw32-windres}"
 
 "$compiler" -std=c++17 -O2 -Wall -Wextra -pthread -static -Isrc src/gpu.cpp tests/gpu_test.cpp -o dist/passgen-gpu-tests.exe
 "$compiler" -std=c++17 -O2 -Wall -Wextra -pthread -static -Isrc src/engine.cpp src/gpu.cpp tests/gpu_engine_test.cpp -o dist/passgen-gpu-engine-tests.exe
+
+"$compiler" -std=c++17 -O2 -Wall -Wextra -pthread -static -Isrc src/engine.cpp src/gpu.cpp tests/direct_combinations_test.cpp -o dist/passgen-direct-combinations-tests.exe

@@ -1,3 +1,12 @@
+# 0.1.12
+
+- Default the GUI to whole-word input with an empty editor. Synchronize the token table after actual text/mode changes, including multiline WM_SETTEXT/paste; invalid character-mode multiline input clears old rows and explains the mode. Keep the selected dropdown visible when navigating to scrolled rows.
+- Add direct whole-word prefix traversal for new GUI word jobs and CLI --words. Reject capped, adjacent-repeat, impossible-length and impossible-class branches before constructing their leaves. Use exact reachable scalar-length tables and safe class feasibility bounds.
+- Skip impossible arbitrary-precision rank intervals before parallel dispatch, including subtrees larger than 64 bits. Keep exact ordered output, bounded CPU buffers, quota replay and durable raw-rank checkpoints.
+- Display covered raw ranks separately from committed constructed-combination rates; skipped ranks are not advertised as generated-password throughput. Word traversal uses CPU; character/GPU behavior remains separate.
+- Save PASSGEN_7 direct-combination policy. Read schemas 1..6 with their saved legacy policy; begin a new job to enable direct traversal for old jobs. Retain schema-6 token caps.
+- Validate synthetic multiline custom entries, editable/scrolled per-word caps, exhaustive output parity, huge impossible subtrees, multiworker Stop/crash/Resume and sanitizer checks. Native Windows/GPU throughput remains unverified.
+
 # 0.1.11
 
 - Add an editable per-token table beside Input, with Always (unlimited) or a maximum of 1..10 selections per generated row. The same token may be absent; no presence requirement is introduced.

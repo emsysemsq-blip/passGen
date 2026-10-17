@@ -29,6 +29,7 @@ struct Config {
  // Missing token: unlimited. Otherwise maximum generated-token uses per row.
  std::map<std::string,unsigned> token_limits;
  unsigned min_length=1, max_length=1, threads=1;
+ bool direct_combinations=false; // Constraint-aware word traversal; legacy checkpoints keep their old policy.
  bool character_lengths=false;
  bool lower=false, upper=false, digit=false, symbol=false, no_repeat=false;
  unsigned resource_percent=0; // 0: manual/unrestricted; GUI and CLI default to 70.
@@ -39,7 +40,8 @@ struct Progress {
  SharedIndex scanned, total;
  std::atomic<uint64_t> written{0}, bytes{0};
  std::atomic<bool> stop{false};
- std::atomic<bool> disk_limit{false};
+ std::atomic<bool> disk_limit{false}, direct_combinations{false};
+ std::atomic<uint64_t> constructed{0};
  std::atomic<unsigned> active_workers{0};
  std::atomic<uint64_t> buffer_bytes{0}, disk_budget_bytes{0};
  SharedText compute_status;

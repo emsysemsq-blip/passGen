@@ -1,0 +1,20 @@
+{
+  "PassGen.exe": {
+    "sha256": "696ffcf6a6da63e12693bd33dfa264c3a5502d9420940b741fe202b0bce0c8c7",
+    "size": 3363011,
+    "rebuild_byte_identical": true,
+    "machine": "AMD64",
+    "link_timestamp": 0,
+    "authenticode_certificate_present": false,
+    "asInvoker_manifest": true,
+    "version": "0.1.12.0"
+  },
+  "passgen-cli.exe": {
+    "sha256": "0096296e23af4be831d7e65db148d54ccbd3ea9e1f3654cc68369b3b8c2cb7e0",
+    "size": 3312100,
+    "rebuild_byte_identical": true,
+    "machine": "AMD64",
+    "link_timestamp": 0,
+    "authenticode_certificate_present": false
+  }
+}

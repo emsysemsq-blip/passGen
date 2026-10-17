@@ -1,3 +1,9 @@
+# PassGen v0.1.12 direct word traversal
+
+A functional pruning fixture uses two words, maximum one use of each, token lengths 1..128. Exactly four complete combinations are constructed (`a`, `b`, `ab`, `ba`) while the raw rank bound is 2^129-2. Another fixture at length128 constructs zero leaves when caps or a missing required class make the tree impossible. These establish skipped work, not a sustained throughput or native Windows benchmark.
+
+Covered raw ranks include proven-impossible subtrees; dividing that count by time would be misleading. The GUI word-mode rate counts constructed combinations in committed ranges of the current run. Direct word traversal runs on CPU. If most branches are valid, traversal may cost more than the old unrestricted renderer; no universal speedup is claimed.
+
 # PassGen v0.1.11 repetition caps
 
 No new throughput claim is made. Unlimited jobs retain the unrestricted CPU fast path and existing GPU eligibility. Capped jobs use incremental frequency tracking on CPU; ambiguous words also need cap-aware canonicalization and may be slower. Historical timings below do not measure these new capped workloads.

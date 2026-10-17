@@ -18,3 +18,6 @@ ${CXX:-g++} -std=c++17 -O2 -Wall -Wextra -Wpedantic -pthread -Isrc src/gpu.cpp t
 ./build/gpu-tests
 ${CXX:-g++} -std=c++17 -O2 -Wall -Wextra -Wpedantic -pthread -Isrc src/engine.cpp src/gpu.cpp tests/gpu_engine_test.cpp -ldl -o build/gpu-engine-tests
 ./build/gpu-engine-tests
+
+${CXX:-g++} -std=c++17 -O2 -Wall -Wextra -Wpedantic -pthread -Isrc src/engine.cpp src/gpu.cpp tests/direct_combinations_test.cpp -ldl -o build/direct-combinations-tests
+./build/direct-combinations-tests

@@ -1,3 +1,21 @@
+# v0.1.12 validation
+
+- Native engine 62 and resource-engine 286 checks passed. Capped quota/replay fixtures now explicitly use direct traversal. Existing CLI suites passed 70 independent capped-token ordered oracles/crash-tail resumes, all 16 word/rule cases, 38 baseline range comparisons, the 64,512-line unique 10..15 range, and exact tails ending at 2^64/65/128.
+- New direct-traversal suite passed: lengths1..128 over two maximum-once tokens construct exactly four feasible combinations while covering a raw bound of 2^129-2. Impossible capped length128 and impossible required-class length128 each construct zero complete combinations. A nonempty multiworker Stop, appended crash tail and Resume produce the exact uninterrupted 25-line oracle with no lost or duplicate rows.
+- AddressSanitizer/UndefinedBehaviorSanitizer passed the direct-traversal suite and all 70 independent capped-token cases/resumes, without suppressions or preload.
+- Actual OpenCL backend 76 and engine integration 70 checks passed on the explicit PoCL CPU test device. Word traversal uses CPU; legacy/character GPU tests retain their previous backend. No physical GPU or native Windows throughput validation was available.
+- Windows MinGW build passed. Under Wine: engine62, resource-engine286, direct pruning/Stop/crash/Resume, GUI integration and actual temporary/persistent checkpoint-lock tests passed. The final GUI smoke also selects and edits the last custom word after scrolling, verifying that its dropdown remains visible.
+- GUI regression uses synthetic multiline number/name entries, not personal data from the user's screenshot: default Whole words, live table replacement even without edit notifications, stale-table clearing on invalid character-mode text, and a custom last-word maximum producing exactly41 of42 one-/two-word combinations. Existing Unicode, manual-symbol, duplicate, preview, large-rank, Stop/Resume and saved-cap cases still pass.
+- Prefix feasibility uses cap/adjacency checks, exact reachable scalar-length tables and safe ASCII-class over-approximations. Only feasible complete combinations reach exact ambiguous-word canonicalization. The direct raw-rank cursor skips impossible intervals before dispatch and preserves order and quota boundaries.
+- Covered ranks include skipped subtrees. Constructed-combination counters describe committed ranges of the current run, not skipped ranks or speculative worker results discarded on Stop/quota. The GUI does not turn a huge skipped-rank interval into a generated-password throughput claim.
+- PASSGEN_7 persists the direct-combination policy. Schemas1..6 retain their saved legacy policy, including schema6 caps; use a new output to enable direct traversal on an old job. This policy avoids silently changing saved execution preferences.
+- Independent second GUI/CLI builds were fully byte-identical. PE inspection confirms AMD64, timestamp0, unsigned executables and GUI version0.1.12.0/asInvoker. See benchmarks/v0.1.12/build-verification.json. MSVC/PowerShell scripts were updated but remain unexecuted here.
+- No sustained speedup, physical-GPU, native Windows or Defender-clearance claim. Pruning benefits workloads with impossible branches; unconstrained output can still be huge and traversal may cost more than the old unrestricted renderer.
+
+Reproduce with scripts/build-linux.sh, tests/token_limits_test.py and tests/direct_combinations_test.cpp. Windows scripts also build the direct-traversal executable. Native Windows and physical GPU behavior still require their actual platforms.
+
+Historical validation follows.
+
 # v0.1.11 validation
 
 - Native Linux engine: 62 checks passed. Resource engine: 286 checks passed, including new exact capped-token disk-quota prefixes and partial Resume for both prefix-free and ambiguous word pools.
