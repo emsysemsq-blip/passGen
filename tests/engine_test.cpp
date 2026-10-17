@@ -6,6 +6,7 @@
 #include <thread>
 #include <stdexcept>
 #include <chrono>
+#include <unordered_set>
 namespace fs=std::filesystem;
 static int checks=0;
 static void check(bool v,const char* msg){++checks;if(!v)throw std::runtime_error(msg);}
@@ -40,5 +41,16 @@ int main(){fs::path dir=fs::temp_directory_path()/("passgen-test-"+std::to_strin
  c.tokens.clear();rejects([&]{pg::total(c);},"empty input rejected");
  rejects([]{pg::tokenize(std::string("\xc0\x80",2),false);},"invalid UTF8 rejected");rejects([]{pg::tokenize(std::string("\xed\xa0\x80",3),false);},"surrogate rejected");rejects([]{pg::tokenize("a\nb",false);},"embedded newlines rejected");
  c={};c.tokens={"a","b"};c.max_length=19;c.threads=2;pg::Progress middle;std::atomic<bool> quit{false};std::thread stopper([&]{while(!quit&&!middle.scanned.load())std::this_thread::yield();if(!quit)middle.stop=true;});try{pg::run(c,(dir/"middle.txt").u8string(),false,middle);}catch(...){quit=true;stopper.join();throw;}quit=true;stopper.join();check(middle.scanned.load()>0&&middle.scanned.load()<pg::total(c),"stop after committed nonempty batch");auto partial=read(dir/"middle.txt");append(dir/"middle.txt","simulated crash tail\n");pg::Progress recovery;pg::run({},(dir/"middle.txt").u8string(),true,recovery);check(recovery.scanned.load()==pg::total(c)&&recovery.written.load()==pg::total(c),"nonempty checkpoint resumed completely");auto actual=read(dir/"middle.txt");check(actual.compare(0,partial.size(),partial)==0,"committed prefix retained");std::string expected;for(uint64_t i=0;i<pg::total(c);++i){expected+=pg::candidate(c,i);expected+='\n';}check(actual==expected,"resumed output exactly matches full indexed sequence");
+ c={};c.tokens={"a","aa","b"};c.max_length=10;c.threads=2;
+ pg::Progress wordStop;std::atomic<bool> wordDone{false};std::thread wordWatcher([&]{while(!wordDone&&!wordStop.scanned.load())std::this_thread::yield();if(!wordDone)wordStop.stop=true;});
+ try{pg::run(c,(dir/"words-resume.txt").u8string(),false,wordStop);}catch(...){wordDone=true;wordWatcher.join();throw;}wordDone=true;wordWatcher.join();
+ check(wordStop.scanned.load()>0&&wordStop.scanned.load()<pg::total(c),"ambiguous word job stops at nonempty checkpoint");
+ append(dir/"words-resume.txt","uncommitted word tail");pg::Progress wordResume;pg::run({},(dir/"words-resume.txt").u8string(),true,wordResume);
+ pg::Progress wordFull;pg::run(c,(dir/"words-full.txt").u8string(),false,wordFull);
+ auto wordOutput=read(dir/"words-resume.txt");check(wordOutput==read(dir/"words-full.txt"),"ambiguous word resume matches complete run exactly");
+ std::istringstream wordLines(wordOutput);std::string wordLine;std::unordered_set<std::string> seenWords;bool uniqueWords=true;while(std::getline(wordLines,wordLine))uniqueWords&=seenWords.insert(wordLine).second;
+ check(uniqueWords&&seenWords.size()==wordResume.written.load(),"no duplicates across ambiguous word batches or resume");
+ c={};c.tokens={"a","a","b"};c.min_length=2;c.max_length=3;pg::Progress duplicateInput;pg::run(c,(dir/"duplicate-input.txt").u8string(),false,duplicateInput);
+ check(duplicateInput.written.load()==12&&duplicateInput.total.load()==12,"engine API deduplicates input before assigning ranks");
  fs::remove_all(dir);std::cout<<"PASS: "<<checks<<" checks\n";return 0;
  }catch(const std::exception& e){std::cerr<<"FAIL after "<<checks<<" checks: "<<e.what()<<" | artifacts "<<dir<<"\n";return 1;}}

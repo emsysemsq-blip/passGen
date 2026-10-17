@@ -2,3 +2,5 @@
 /dist/
 *.pgstate
 *.pgstate.tmp
+
+__pycache__/

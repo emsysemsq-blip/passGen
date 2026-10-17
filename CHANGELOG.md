@@ -1,3 +1,12 @@
+# 0.1.2
+
+- Scan every selected final-character length in ascending order; include prefix/suffix in length and keep explicit legacy token-count mode.
+- Guarantee exact unique output across character/word aliases, token counts, parallel batches and checkpoint resume.
+- Add canonical tokenization without storing output history; the character path stays naturally unique.
+- Normalize repeated inputs before assigning new job ranks.
+- Save PASSGEN_3 with length policy; preserve compatible legacy semantics and reject ambiguous old word checkpoints that may already contain duplicates.
+- Add independent exhaustive uniqueness/range oracles, ambiguous-word mid-job recovery and GUI word/length coverage.
+
 # 0.1.1
 
 - Fix the 64-bit search-space overflow with dependency-free arbitrary-precision candidate counts/ranks.

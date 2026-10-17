@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include "unique.hpp"
 #include <algorithm>
 #include <array>
 #include <filesystem>
@@ -25,16 +26,52 @@ namespace pg {
 namespace fs=std::filesystem;
 static void require(bool b,const char* s){if(!b)throw std::runtime_error(s);}
 static fs::path path(const std::string& s){return fs::u8path(s);}
-std::vector<std::string> tokenize(const std::string& text,bool words){
- std::vector<std::string> out; std::unordered_set<std::string> seen;
- auto add=[&](std::string s){if(!s.empty() && seen.insert(s).second)out.push_back(std::move(s));};
- if(words){std::istringstream in(text);std::string s;while(in>>s)add(s);}
- else for(size_t i=0;i<text.size();){
+static size_t scalarWidth(const std::string& text,size_t i){
   unsigned char c=text[i];size_t n=c<0x80?1:(c>=0xC2&&c<=0xDF?2:(c>=0xE0&&c<=0xEF?3:(c>=0xF0&&c<=0xF4?4:0)));
   require(n && i+n<=text.size(),"Invalid UTF-8 input");
   for(size_t j=1;j<n;++j)require((static_cast<unsigned char>(text[i+j])&0xC0)==0x80,"Invalid UTF-8 input");
   if(n==3)require(!((c==0xE0&&(unsigned char)text[i+1]<0xA0)||(c==0xED&&(unsigned char)text[i+1]>=0xA0)),"Invalid Unicode scalar");
   if(n==4)require(!((c==0xF0&&(unsigned char)text[i+1]<0x90)||(c==0xF4&&(unsigned char)text[i+1]>=0x90)),"Invalid Unicode scalar");
+ return n;
+}
+size_t characters(const std::string& text){size_t count=0;for(size_t i=0;i<text.size();++count)i+=scalarWidth(text,i);return count;}
+unsigned default_max_length(const Config& c){
+ if(!c.character_lengths)return unsigned(c.tokens.size());
+ size_t longest=1;for(const auto& token:c.tokens)longest=std::max(longest,characters(token));
+ size_t defaultLength=longest*c.tokens.size()+characters(c.prefix)+characters(c.suffix);
+ return unsigned(std::max<size_t>(1,std::min<size_t>(128,defaultLength)));
+}
+struct Bounds {unsigned minimum=1,maximum=0;};
+static Bounds bounds(const Config& c,unsigned finalLength=0){
+ if(!c.character_lengths)return {c.min_length,c.max_length};
+ size_t affix=characters(c.prefix)+characters(c.suffix);
+ unsigned minLength=finalLength?finalLength:c.min_length,maxLength=finalLength?finalLength:c.max_length;
+ if(affix>=maxLength)return {};
+ size_t smallest=SIZE_MAX,largest=0;
+ for(const auto& token:c.tokens){size_t n=characters(token);smallest=std::min(smallest,n);largest=std::max(largest,n);}
+ size_t minBody=minLength>affix?minLength-affix:1;
+ size_t maxBody=maxLength-affix;
+ return {unsigned(std::max<size_t>(1,(minBody+largest-1)/largest)),unsigned(maxBody/smallest)};
+}
+struct Segment {unsigned final_chars;Bounds tokens;Index count;};
+struct Plan {
+ Bounds tokens;
+ std::vector<Segment> segments;
+ Index count;
+ explicit Plan(const Config& c):tokens(bounds(c)){
+  std::vector<Index> powers(tokens.maximum+1,1);
+  for(unsigned n=1;n<=tokens.maximum;++n){powers[n]=powers[n-1];powers[n]*=uint32_t(c.tokens.size());}
+  auto add=[&](unsigned chars,Bounds r){Index subtotal;for(unsigned n=r.minimum;n<=r.maximum;++n)subtotal+=powers[n];if(subtotal){segments.push_back({chars,r,subtotal});count+=subtotal;}};
+  if(c.character_lengths)for(unsigned length=c.min_length;length<=c.max_length;++length)add(length,bounds(c,length));
+  else add(0,tokens);
+ }
+};
+std::vector<std::string> tokenize(const std::string& text,bool words){
+ std::vector<std::string> out; std::unordered_set<std::string> seen;
+ auto add=[&](std::string s){if(!s.empty() && seen.insert(s).second)out.push_back(std::move(s));};
+ if(words){std::istringstream in(text);std::string s;while(in>>s)add(s);}
+ else for(size_t i=0;i<text.size();){
+  size_t n=scalarWidth(text,i);unsigned char c=text[i];
   require(c!='\n'&&c!='\r'&&c!=0,"Input cannot contain newline or NUL");add(text.substr(i,n));i+=n;
  }
  return out;
@@ -47,19 +84,25 @@ Index total(const Config& c){
  size_t longest=0;for(auto& s:c.tokens){require(!s.empty()&&s.find_first_of("\r\n") == std::string::npos && s.find('\0')==std::string::npos,"Invalid token");longest=std::max(longest,s.size());}
  require(longest<=4096 && c.prefix.size()<=4096 && c.suffix.size()<=4096,"Token, prefix or suffix too long");
  require(c.prefix.find_first_of("\r\n")==std::string::npos && c.suffix.find_first_of("\r\n")==std::string::npos,"Prefix/suffix cannot contain newlines");
- Index p=1,sum=0;auto n=uint32_t(c.tokens.size());
- for(unsigned l=1;l<=c.max_length;++l){p*=n;if(l>=c.min_length)sum+=p;}
- return sum;
+ return Plan(c).count;
 }
-std::string candidate(const Config& c,Index index){
- Index power=1;unsigned len=0;for(unsigned l=1;l<=c.max_length;++l){power*=c.tokens.size();if(l>=c.min_length){if(index<power){len=l;break;}index-=power;}}
+static std::string generate(const Config& c,Index index,const UniqueOutputs& unique,const Plan& plan){
+ const Segment* segment=nullptr;
+ for(const auto& part:plan.segments){if(index<part.count){segment=&part;break;}index-=part.count;}
+ require(segment!=nullptr,"Candidate index out of range");
+ Index power=1;unsigned len=0;for(unsigned l=1;l<=segment->tokens.maximum;++l){power*=c.tokens.size();if(l>=segment->tokens.minimum){if(index<power){len=l;break;}index-=power;}}
  require(len!=0,"Candidate index out of range");
  std::array<size_t,128> digits{};
  if(index.fits64()){uint64_t small=index.u64();for(unsigned i=len;i>0;--i){digits[i-1]=small%c.tokens.size();small/=c.tokens.size();}}
  else for(unsigned i=len;i>0;--i)digits[i-1]=index.divide(uint32_t(c.tokens.size()));
  if(c.no_repeat)for(unsigned i=1;i<len;++i)if(digits[i]==digits[i-1])return {};
- std::string s=c.prefix;for(unsigned i=0;i<len;++i)s+=c.tokens[digits[i]];s+=c.suffix;return s;
+ std::string body;size_t outputLength=unique.affixCharacters();
+ for(unsigned i=0;i<len;++i){body+=c.tokens[digits[i]];outputLength+=unique.tokenCharacters(digits[i]);}
+ if(c.character_lengths&&outputLength!=segment->final_chars)return {};
+ if(!unique.canonical(body,digits.data(),len))return {};
+ return c.prefix+body+c.suffix;
 }
+std::string candidate(const Config& c,Index index){Plan plan(c);UniqueOutputs unique(c,plan.tokens.minimum,plan.tokens.maximum);return generate(c,std::move(index),unique,plan);}
 bool accepts(const Config& c,const std::string& s){
  if(s.empty())return false;
  bool lo=false,up=false,di=false,sy=false;
@@ -141,13 +184,26 @@ static void replace(const fs::path& a,const fs::path& b){
 static std::string encode(const std::string& s){static const char h[]="0123456789abcdef";std::string out;for(unsigned char b:s){out+=h[b>>4];out+=h[b&15];}return out.empty()?"-":out;}
 static std::string decode(const std::string& s){if(s=="-")return {};require(s.size()%2==0,"Invalid checkpoint");std::string out;auto val=[](char c){if(c>='0'&&c<='9')return c-'0';if(c>='a'&&c<='f')return c-'a'+10;throw std::runtime_error("Invalid checkpoint");};for(size_t i=0;i<s.size();i+=2)out+=char(val(s[i])*16+val(s[i+1]));return out;}
 struct State{Config c;Index next=0;uint64_t lines=0,offset=0,tailhash=hash("");};
-static std::string serialize(const State& s){std::ostringstream o;o<<"PASSGEN_2\n"<<s.next<<' '<<s.lines<<' '<<s.offset<<' '<<s.tailhash<<'\n';auto& c=s.c;o<<c.min_length<<' '<<c.max_length<<' '<<c.threads<<' '<<c.lower<<' '<<c.upper<<' '<<c.digit<<' '<<c.symbol<<' '<<c.no_repeat<<'\n'<<encode(c.prefix)<<' '<<encode(c.suffix)<<'\n'<<c.tokens.size()<<'\n';for(auto& t:c.tokens)o<<encode(t)<<'\n';return o.str();}
+static std::string serialize(const State& s){std::ostringstream o;o<<"PASSGEN_3\n"<<s.next<<' '<<s.lines<<' '<<s.offset<<' '<<s.tailhash<<'\n';auto& c=s.c;o<<c.min_length<<' '<<c.max_length<<' '<<c.threads<<' '<<c.lower<<' '<<c.upper<<' '<<c.digit<<' '<<c.symbol<<' '<<c.no_repeat<<' '<<c.character_lengths<<'\n'<<encode(c.prefix)<<' '<<encode(c.suffix)<<'\n'<<c.tokens.size()<<'\n';for(auto& t:c.tokens)o<<encode(t)<<'\n';return o.str();}
 static void save(const fs::path& p,const State& s){auto tmp=p;tmp+=".tmp";std::error_code ec;fs::remove(tmp,ec);{File f(tmp,false);auto body=serialize(s);f.write(body+"CHECK "+std::to_string(hash(body))+"\n");f.flush();}replace(tmp,p);}
-static State load(const fs::path& p){require(fs::file_size(p)<=16*1024*1024,"Checkpoint too large");std::ifstream f(p,std::ios::binary);std::string all((std::istreambuf_iterator<char>(f)),{});auto at=all.rfind("CHECK ");require(at!=std::string::npos,"Invalid checkpoint");auto body=all.substr(0,at);std::istringstream check(all.substr(at+6));uint64_t checksum=0;require(bool(check>>checksum)&&checksum==hash(body),"Checkpoint checksum mismatch");std::istringstream in(body);std::string magic,a,b;State s;size_t n=0;auto& c=s.c;require(bool(in>>magic>>s.next>>s.lines>>s.offset>>s.tailhash>>c.min_length>>c.max_length>>c.threads>>c.lower>>c.upper>>c.digit>>c.symbol>>c.no_repeat>>a>>b>>n)&&(magic=="PASSGEN_1"||magic=="PASSGEN_2")&&n<=100000,"Invalid checkpoint");c.prefix=decode(a);c.suffix=decode(b);for(size_t i=0;i<n;++i){require(bool(in>>a),"Invalid checkpoint");c.tokens.push_back(decode(a));}auto count=total(c);require(s.next<=count&&s.lines<=s.next&&s.offset<=INT64_MAX,"Invalid checkpoint position");return s;}
+static State load(const fs::path& p){
+ require(fs::file_size(p)<=16*1024*1024,"Checkpoint too large");std::ifstream f(p,std::ios::binary);std::string all((std::istreambuf_iterator<char>(f)),{});
+ auto at=all.rfind("CHECK ");require(at!=std::string::npos,"Invalid checkpoint");auto body=all.substr(0,at);std::istringstream check(all.substr(at+6));uint64_t checksum=0;
+ require(bool(check>>checksum)&&checksum==hash(body),"Checkpoint checksum mismatch");
+ std::istringstream in(body);std::string magic,a,b;State s;size_t n=0;auto& c=s.c;
+ require(bool(in>>magic>>s.next>>s.lines>>s.offset>>s.tailhash>>c.min_length>>c.max_length>>c.threads>>c.lower>>c.upper>>c.digit>>c.symbol>>c.no_repeat)&&(magic=="PASSGEN_1"||magic=="PASSGEN_2"||magic=="PASSGEN_3"),"Invalid checkpoint");
+ if(magic=="PASSGEN_3")require(bool(in>>c.character_lengths),"Invalid checkpoint");
+ require(bool(in>>a>>b>>n)&&n<=100000,"Invalid checkpoint");c.prefix=decode(a);c.suffix=decode(b);
+ for(size_t i=0;i<n;++i){require(bool(in>>a),"Invalid checkpoint");c.tokens.push_back(decode(a));}
+ auto count=total(c);require(s.next<=count&&s.lines<=s.next&&s.offset<=INT64_MAX,"Invalid checkpoint position");
+ auto range=bounds(c);UniqueOutputs unique(c,range.minimum,range.maximum);
+ require(magic=="PASSGEN_3"||!unique.needsCanonicalization(),"This older word checkpoint may contain duplicates. Start a new output with PassGen 0.1.2");
+ return s;
+}
 void run(Config c,const std::string& output,bool resume,Progress& progress,const std::function<void(const Config&)>& loaded){
  auto out=fs::absolute(path(output));auto cp=out;cp+=".pgstate";State s;
- if(resume){s=load(cp);c=s.c;}else {total(c);require(!fs::exists(cp),"Checkpoint already exists; select another output or resume");s.c=c;}
- Index count=total(c);File file(out,resume);
+ if(resume){s=load(cp);c=s.c;}else {std::unordered_set<std::string> seen;c.tokens.erase(std::remove_if(c.tokens.begin(),c.tokens.end(),[&](const auto& t){return !seen.insert(t).second;}),c.tokens.end());total(c);require(!fs::exists(cp),"Checkpoint already exists; select another output or resume");s.c=c;}
+ Index count=total(c);Plan plan(c);UniqueOutputs unique(c,plan.tokens.minimum,plan.tokens.maximum);File file(out,resume);
  if(resume){require(file.size()>=s.offset,"Output is shorter than checkpoint");require(hash(file.tail(s.offset))==s.tailhash,"Output tail changed; resume refused");file.truncate(s.offset);file.flush();}
  else {file.flush();save(cp,s);}
  progress.total=count;progress.scanned=s.next;progress.written=s.lines;progress.bytes=s.offset;if(loaded)loaded(c);
@@ -157,7 +213,7 @@ void run(Config c,const std::string& output,bool resume,Progress& progress,const
  while(s.next<count&&!progress.stop){
   std::vector<std::future<std::pair<std::string,uint64_t>>> tasks;Index end=s.next;
   for(unsigned w=0;w<c.threads&&end<count;++w){Index begin=end;auto remaining=count-end;uint64_t span=remaining<Index(chunk)?remaining.u64():chunk;end+=span;Index finish=end;
-   tasks.push_back(std::async(std::launch::async,[&,begin,finish,span]{std::string text;text.reserve(std::min<uint64_t>(1024*1024,span*maxLine));uint64_t lines=0;for(Index i=begin;i<finish;++i){auto s=candidate(c,i);if(accepts(c,s)){text+=s;text+='\n';++lines;}}return std::make_pair(std::move(text),lines);}));}
+   tasks.push_back(std::async(std::launch::async,[&,begin,finish,span]{std::string text;text.reserve(std::min<uint64_t>(1024*1024,span*maxLine));uint64_t lines=0;for(Index i=begin;i<finish;++i){auto s=generate(c,i,unique,plan);if(accepts(c,s)){text+=s;text+='\n';++lines;}}return std::make_pair(std::move(text),lines);}));}
   State next=s;for(auto& task:tasks){auto part=task.get();require(next.offset<=uint64_t(INT64_MAX)-part.first.size(),"Output exceeds supported file size");file.write(part.first);next.offset+=part.first.size();next.lines+=part.second;}
   file.flush();next.next=end;next.tailhash=hash(file.tail(next.offset));save(cp,next);s=std::move(next);
   progress.scanned=s.next;progress.written=s.lines;progress.bytes=s.offset;

@@ -9,6 +9,7 @@ namespace pg {
 struct Config {
  std::vector<std::string> tokens;
  unsigned min_length=1, max_length=1, threads=1;
+ bool character_lengths=false;
  bool lower=false, upper=false, digit=false, symbol=false, no_repeat=false;
  std::string prefix, suffix;
 };
@@ -18,6 +19,8 @@ struct Progress {
  std::atomic<bool> stop{false};
 };
 std::vector<std::string> tokenize(const std::string&, bool words);
+size_t characters(const std::string&);
+unsigned default_max_length(const Config&);
 Index total(const Config&);
 std::string candidate(const Config&, Index);
 bool accepts(const Config&, const std::string&);

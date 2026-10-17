@@ -53,7 +53,7 @@ def main():
         result = subprocess.run(command + ['--resume', '--out', filename], capture_output=True,
                                 text=True, timeout=60)
         assert result.returncode == 0 and path.read_bytes() == b'aa\nab\nba\nbb\n'
-        assert pathlib.Path(str(path)+'.pgstate').read_text().startswith('PASSGEN_2\n')
+        assert pathlib.Path(str(path)+'.pgstate').read_text().startswith('PASSGEN_3\n')
         print('PASS: v0.1.0 checkpoint reads and upgrades without lost/duplicate lines')
 
 
