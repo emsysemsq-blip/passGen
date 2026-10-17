@@ -1,3 +1,16 @@
+# v0.1.9 validation
+
+- Linux and Windows-under-Wine engine suites passed62checks. Resource-engine suites passed267checks on Linux and Wine, preserving CPU pacing, exact disk quota boundaries and Resume. Native Linux70%sample measured69.86%; Wine timing is not a native Windows utilization claim.
+- GUI smoke and real Windows checkpoint-lock/recovery tests passed under Wine with the new embedded common-controls/asInvoker manifest.
+- Optimization validation:38 baseline/candidate Unicode, mixed-width, word and rule cases matched byte-for-byte; independent word/dedup/crash-replay and2^64/65/128 tail suites passed. Engine ASAN/UBSAN passed62checks.
+- Five alternating normal durable-output runs at abcd length12/workers4/resource0 produced16,777,216 rows and218,103,808bytes each, all with the sameSHA256. Full-process medians0.167432→0.131254seconds (~22% less); Linux cloud-overlay only. See benchmarks/v0.1.9/paired-comparison.json.
+- Independent second MinGW builds of the GUI and CLI were entirely byte-identical (not just normalized). PE inspection confirmed linktimestamp0, embedded asInvoker manifest, version0.1.9.0, and no Authenticode certificate. Raw artifact hashes and checks are in benchmarks/v0.1.9/build-verification.json.
+- The separately added MSVC x64 script was reviewed but not executed: this Linux environment has neither MSVC nor PowerShell. Distributed executables are MinGW builds, not MSVC builds.
+- The user's Defender finding againstv0.1.8 remains unresolved. v0.1.9 has not received native Defender scanning, publisher signing, or Microsoft file-review clearance. Functional/reproducibility tests do not establish antivirus acceptance. See SECURITY-NOTICE.md.
+- GPU remains unimplemented. Native Windows throughput and billion-line sustained performance are unverified. No checkpoint schema change beyondv0.1.8's PASSGEN_4.
+
+Historical validation follows.
+
 # v0.1.8 validation
 
 - Linux engine: 62 checks passed. Resource discovery/planning tests passed, including CPU quota parsing, affinity, cgroup memory, overflow and live detection.

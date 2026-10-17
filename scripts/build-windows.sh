@@ -3,8 +3,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p dist
 compiler="${CXX_WINDOWS:-x86_64-w64-mingw32-g++-posix}"
-"$compiler" -std=c++17 -O3 -Wall -Wextra -Wpedantic -pthread -static -static-libgcc -static-libstdc++ -municode -mwindows src/engine.cpp src/winmain.cpp -lcomdlg32 -lcomctl32 -o dist/PassGen.exe
-"$compiler" -std=c++17 -O3 -Wall -Wextra -Wpedantic -pthread -static -static-libgcc -static-libstdc++ -municode src/engine.cpp src/cli.cpp -o dist/passgen-cli.exe
+resource_compiler="${WINDRES_WINDOWS:-x86_64-w64-mingw32-windres}"
+"$resource_compiler" --preprocessor="$compiler" --preprocessor-arg=-E --preprocessor-arg=-xc --preprocessor-arg=-DRC_INVOKED -I src src/passgen.rc -O coff -o dist/passgen-res.o
+"$compiler" -std=c++17 -O3 -Wall -Wextra -Wpedantic -pthread -static -static-libgcc -static-libstdc++ -municode -mwindows src/engine.cpp src/winmain.cpp dist/passgen-res.o -Wl,--no-insert-timestamp -lcomdlg32 -lcomctl32 -o dist/PassGen.exe
+"$compiler" -std=c++17 -O3 -Wall -Wextra -Wpedantic -pthread -static -static-libgcc -static-libstdc++ -municode src/engine.cpp src/cli.cpp -Wl,--no-insert-timestamp -o dist/passgen-cli.exe
 "$compiler" -std=c++17 -O2 -pthread -static -static-libgcc -static-libstdc++ -Isrc src/engine.cpp tests/engine_test.cpp -o dist/passgen-tests.exe
 
 "$compiler" -std=c++17 -O2 -pthread -static -static-libgcc -static-libstdc++ -Isrc tests/gui_smoke.cpp -o dist/passgen-gui-smoke.exe

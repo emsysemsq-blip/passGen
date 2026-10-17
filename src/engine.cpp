@@ -307,9 +307,9 @@ static unsigned classes(const std::string& text){
 // Metadata shared by workers; the odometer updates only the changed suffix.
 struct Alphabet {
  std::vector<unsigned> masks;std::vector<size_t> chars;
- unsigned required,affixMask;size_t affixChars,width;bool fixed;
- explicit Alphabet(const Config& c):required(unsigned(c.lower)|(unsigned(c.upper)<<1)|(unsigned(c.digit)<<2)|(unsigned(c.symbol)<<3)),affixMask(classes(c.prefix)|classes(c.suffix)),affixChars(c.character_lengths?characters(c.prefix)+characters(c.suffix):0),width(c.tokens.front().size()),fixed(true){
-  for(const auto& token:c.tokens){masks.push_back(classes(token));chars.push_back(c.character_lengths?characters(token):0);fixed&=token.size()==width;}
+ unsigned required,affixMask;size_t affixChars,width;bool fixed,uniformChars;
+ explicit Alphabet(const Config& c):required(unsigned(c.lower)|(unsigned(c.upper)<<1)|(unsigned(c.digit)<<2)|(unsigned(c.symbol)<<3)),affixMask(classes(c.prefix)|classes(c.suffix)),affixChars(c.character_lengths?characters(c.prefix)+characters(c.suffix):0),width(c.tokens.front().size()),fixed(true),uniformChars(true){
+  for(const auto& token:c.tokens){masks.push_back(classes(token));chars.push_back(c.character_lengths?characters(token):0);fixed&=token.size()==width;uniformChars&=chars.back()==chars.front();}
  }
 };
 struct RangeResult {std::string text;uint64_t lines=0,scanned=0;bool quota_hit=false;};
@@ -328,9 +328,37 @@ static RangeResult generateRange(const Config& c,Index begin,uint64_t span,const
   if(rank.fits64()){uint64_t value=rank.u64();for(unsigned i=length;i>0;--i){digits[i-1]=value%radix;value/=radix;}}
   else for(unsigned i=length;i>0;--i)digits[i-1]=rank.divide(uint32_t(radix));
   unsigned counts[4]={};size_t charCount=alphabet.affixChars;unsigned adjacent=0;
-  auto account=[&](size_t token,int delta){if(c.character_lengths)charCount+=delta*alphabet.chars[token];if(alphabet.required)for(unsigned bit=0;bit<4;++bit)if(alphabet.masks[token]&(1u<<bit))counts[bit]+=delta;};
+  if(c.character_lengths&&alphabet.uniformChars)charCount+=length*alphabet.chars.front();
+  auto account=[&](size_t token,int delta){if(c.character_lengths&&!alphabet.uniformChars)charCount+=delta*alphabet.chars[token];if(alphabet.required)for(unsigned bit=0;bit<4;++bit)if(alphabet.masks[token]&(1u<<bit))counts[bit]+=delta;};
   std::string line=c.prefix;for(unsigned i=0;i<length;++i){account(digits[i],1);if(c.no_repeat&&i&&digits[i]==digits[i-1])++adjacent;if(alphabet.fixed)line+=c.tokens[digits[i]];}
   if(alphabet.fixed){line+=c.suffix;line+='\n';}
+  // A uniform, prefix-free alphabet with no active filters has no per-result
+  // validation work. Emit bounded groups while retaining the same odometer,
+  // checkpoint rank order, stop interval, and complete-line quota boundary.
+  const bool unrestricted=alphabet.fixed&&!unique.needsCanonicalization()&&!c.no_repeat
+    &&(alphabet.required&~alphabet.affixMask)==0
+    &&(!c.character_lengths||(alphabet.uniformChars&&charCount==segment->final_chars));
+  if(unrestricted){
+   uint64_t emitted=0;
+   while(emitted<amount){
+    cpu.pace();if(stop.load())return result;
+    uint64_t requested=std::min<uint64_t>(2048,amount-emitted);
+    uint64_t batch=std::min<uint64_t>(requested,(byte_limit-text.size())/line.size());
+    for(uint64_t n=0;n<batch;++n){
+     text+=line;
+     if(emitted+n+1==amount)break;
+     for(unsigned i=length;i>0;){--i;size_t next=digits[i]+1==radix?0:digits[i]+1;digits[i]=next;
+      size_t offset=c.prefix.size()+i*alphabet.width;
+      if(alphabet.width==1)line[offset]=c.tokens[next][0];
+      else std::memcpy(&line[offset],c.tokens[next].data(),alphabet.width);
+      if(next)break;
+     }
+    }
+    emitted+=batch;result.lines+=batch;result.scanned+=batch;
+    if(batch<requested){cpu.pace();result.quota_hit=true;return result;}
+   }
+   begin+=amount;span-=amount;continue;
+  }
   for(uint64_t n=0;n<amount;++n){
    if((n&2047)==0){cpu.pace();if(stop.load())return result;}
    bool valid=(!c.no_repeat||adjacent==0)&&(!c.character_lengths||charCount==segment->final_chars);

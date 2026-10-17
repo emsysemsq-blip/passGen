@@ -1,3 +1,16 @@
+# PassGen v0.1.9 comparison
+
+Uniform-width, prefix-free generation skips redundant scalar/rule work when every output passes those rules. Five alternating repetitions per build, abcd at final length12, workers4, resource-percent0, produced exactly16,777,216 lines and218,103,808bytes per run, with the same SHA256 in all ten runs.
+
+| Timing | v0.1.8 | v0.1.9 |
+| --- | ---: | ---: |
+| Median full CLI process |0.167432s|0.131254s|
+| Median reported run time |0.164275s|0.127783s|
+
+Full-process median decreased21.6%; reported run median decreased22.2%. These are normal durable file writes on the same Linux cloud-overlay environment described below; hashing is outside timing. Native Windows performance and billion-line sustained rates are unverified. CPU70 mode retains pacing and is not the mode measured by this comparison. Raw samples: benchmarks/v0.1.9/paired-comparison.json.
+
+Earlier measurements follow.
+
 # PassGen v0.1.7 performance
 
 The optimized CPU engine is faster than v0.1.6 while producing exactly the same ordered output bytes. GPU execution is not implemented.

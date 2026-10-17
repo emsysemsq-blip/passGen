@@ -3,9 +3,11 @@ Set-Location (Join-Path $PSScriptRoot '..')
 New-Item -ItemType Directory -Force dist | Out-Null
 # Run from an MSYS2 UCRT64 terminal with mingw-w64-ucrt-x86_64-gcc installed.
 $flags = @('-std=c++17','-O3','-Wall','-Wextra','-pthread','-static','-static-libgcc','-static-libstdc++')
-& g++ @flags -municode -mwindows src/engine.cpp src/winmain.cpp -lcomdlg32 -lcomctl32 -o dist/PassGen.exe
+& windres --preprocessor=g++ --preprocessor-arg=-E --preprocessor-arg=-xc --preprocessor-arg=-DRC_INVOKED -I src src/passgen.rc -O coff -o dist/passgen-res.o
+if ($LASTEXITCODE) { throw 'Windows resource build failed' }
+& g++ @flags -municode -mwindows src/engine.cpp src/winmain.cpp dist/passgen-res.o -Wl,--no-insert-timestamp -lcomdlg32 -lcomctl32 -o dist/PassGen.exe
 if ($LASTEXITCODE) { throw 'GUI build failed' }
-& g++ @flags -municode src/engine.cpp src/cli.cpp -o dist/passgen-cli.exe
+& g++ @flags -municode src/engine.cpp src/cli.cpp -Wl,--no-insert-timestamp -o dist/passgen-cli.exe
 if ($LASTEXITCODE) { throw 'CLI build failed' }
 & g++ @flags -Isrc src/engine.cpp tests/engine_test.cpp -o dist/passgen-tests.exe
 if ($LASTEXITCODE) { throw 'Test build failed' }

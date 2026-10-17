@@ -1,0 +1,94 @@
+{
+  "workload": {
+    "chars": "abcd",
+    "min": 12,
+    "max": 12,
+    "threads": 4,
+    "resource_percent": 0,
+    "rows": 16777216,
+    "bytes": 218103808
+  },
+  "scope": "Native Linux CLI process through durable output completion; 5 alternating runs per version; cloud overlay, not native Windows.",
+  "samples": [
+    {
+      "build": "baseline",
+      "rep": 0,
+      "wall_seconds": 0.18139522700221278,
+      "stdout": "Complete: scanned=16777216 written=16777216 bytes=218103808 seconds=0.178384",
+      "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+      "bytes": 218103808
+    },
+    {
+      "build": "candidate",
+      "rep": 0,
+      "wall_seconds": 0.1430065369931981,
+      "stdout": "Complete: scanned=16777216 written=16777216 bytes=218103808 seconds=0.139928",
+      "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+      "bytes": 218103808
+    },
+    {
+      "build": "candidate",
+      "rep": 1,
+      "wall_seconds": 0.13453334401128814,
+      "stdout": "Complete: scanned=16777216 written=16777216 bytes=218103808 seconds=0.130866",
+      "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+      "bytes": 218103808
+    },
+    {
+      "build": "baseline",
+      "rep": 1,
+      "wall_seconds": 0.16743219099589624,
+      "stdout": "Complete: scanned=16777216 written=16777216 bytes=218103808 seconds=0.164275",
+      "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+      "bytes": 218103808
+    },
+    {
+      "build": "baseline",
+      "rep": 2,
+      "wall_seconds": 0.17232687000068836,
+      "stdout": "Complete: scanned=16777216 written=16777216 bytes=218103808 seconds=0.169286",
+      "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+      "bytes": 218103808
+    },
+    {
+      "build": "candidate",
+      "rep": 2,
+      "wall_seconds": 0.13125357098761015,
+      "stdout": "Complete: scanned=16777216 written=16777216 bytes=218103808 seconds=0.127783",
+      "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+      "bytes": 218103808
+    },
+    {
+      "build": "candidate",
+      "rep": 3,
+      "wall_seconds": 0.12346136197447777,
+      "stdout": "Complete: scanned=16777216 written=16777216 bytes=218103808 seconds=0.12012",
+      "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+      "bytes": 218103808
+    },
+    {
+      "build": "baseline",
+      "rep": 3,
+      "wall_seconds": 0.1630597659968771,
+      "stdout": "Complete: scanned=16777216 written=16777216 bytes=218103808 seconds=0.15961",
+      "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+      "bytes": 218103808
+    },
+    {
+      "build": "baseline",
+      "rep": 4,
+      "wall_seconds": 0.1555194219981786,
+      "stdout": "Complete: scanned=16777216 written=16777216 bytes=218103808 seconds=0.152073",
+      "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+      "bytes": 218103808
+    },
+    {
+      "build": "candidate",
+      "rep": 4,
+      "wall_seconds": 0.1285440459905658,
+      "stdout": "Complete: scanned=16777216 written=16777216 bytes=218103808 seconds=0.125724",
+      "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+      "bytes": 218103808
+    }
+  ]
+}

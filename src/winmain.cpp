@@ -19,6 +19,7 @@
 #include <chrono>
 #include <iomanip>
 #include "engine.hpp"
+#include "version.hpp"
 #include "ui_ids.hpp"
 namespace {
 using namespace pg::ui;
@@ -58,7 +59,7 @@ void start(bool resume){if(running)return;pg::Config c;if(!resume){c=config();sh
 });message=progress.scanned.load()==progress.total.load()?L"Complete. Output and checkpoint saved.":progress.disk_limit?L"Stopped safely at disk budget. Resume recalculates free-space budget.":L"Stopped safely. Use Resume to continue the same output.";}catch(const std::exception& e){message=L"Failed: "+wide(e.what())+L". Keep the output and .pgstate together; resume the last checkpoint after fixing the error.";}catch(...){message=L"Unexpected failure. Keep the output and checkpoint for recovery.";}{std::lock_guard<std::mutex> lock(statusMutex);result=message;}elapsedNs=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-began).count();finished=true;});
 }
 LRESULT CALLBACK proc(HWND h,UINT msg,WPARAM wp,LPARAM lp){switch(msg){case WM_CREATE:{window=h;NONCLIENTMETRICSW metrics{};metrics.cbSize=sizeof(metrics);SystemParametersInfoW(SPI_GETNONCLIENTMETRICS,sizeof(metrics),&metrics,0);font=CreateFontIndirectW(&metrics.lfMessageFont);
- label(L"PassGen 0.1.8 | Native Windows wordlist generator",20,16,740);
+ label(L"PassGen " PASSGEN_VERSION_W L" | Native Windows wordlist generator",20,16,740);
  label(L"Input characters (Unicode supported), or whitespace-separated words:",20,49,740);
  control(L"EDIT",L"abc123",Input,20,74,740,65,WS_TABSTOP|ES_MULTILINE|ES_AUTOVSCROLL|WS_VSCROLL);
  control(L"BUTTON",L"Word input (whitespace-separated words; duplicate output lines are excluded)",Words,20,146,740,24,WS_TABSTOP|BS_AUTOCHECKBOX);
@@ -85,4 +86,4 @@ LRESULT CALLBACK proc(HWND h,UINT msg,WPARAM wp,LPARAM lp){switch(msg){case WM_C
  case WM_DESTROY:KillTimer(h,1);if(worker.joinable()){progress.stop=true;worker.join();}DeleteObject(font);PostQuitMessage(0);return 0;
  }return DefWindowProcW(h,msg,wp,lp);}
 }
-int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();INITCOMMONCONTROLSEX init{sizeof(init),ICC_PROGRESS_CLASS};InitCommonControlsEx(&init);WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=instance;cls.hCursor=LoadCursorW(nullptr,IDC_ARROW);cls.hIcon=LoadIconW(nullptr,IDI_APPLICATION);cls.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);cls.lpszClassName=L"PassGenWindow";RegisterClassW(&cls);RECT r{0,0,785,775};AdjustWindowRect(&r,WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,FALSE);HWND h=CreateWindowW(cls.lpszClassName,L"PassGen 0.1.8",WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,nullptr);if(!h)return 1;ShowWindow(h,show);MSG msg;while(GetMessageW(&msg,nullptr,0,0)>0){if(!IsDialogMessageW(h,&msg)){TranslateMessage(&msg);DispatchMessageW(&msg);}}return (int)msg.wParam;}
+int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,LPWSTR,int show){SetProcessDPIAware();INITCOMMONCONTROLSEX init{sizeof(init),ICC_PROGRESS_CLASS};InitCommonControlsEx(&init);WNDCLASSW cls{};cls.lpfnWndProc=proc;cls.hInstance=instance;cls.hCursor=LoadCursorW(nullptr,IDC_ARROW);cls.hIcon=LoadIconW(nullptr,IDI_APPLICATION);cls.hbrBackground=(HBRUSH)(COLOR_WINDOW+1);cls.lpszClassName=L"PassGenWindow";RegisterClassW(&cls);RECT r{0,0,785,775};AdjustWindowRect(&r,WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,FALSE);HWND h=CreateWindowW(cls.lpszClassName,L"PassGen " PASSGEN_VERSION_W,WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,CW_USEDEFAULT,CW_USEDEFAULT,r.right-r.left,r.bottom-r.top,nullptr,nullptr,instance,nullptr);if(!h)return 1;ShowWindow(h,show);MSG msg;while(GetMessageW(&msg,nullptr,0,0)>0){if(!IsDialogMessageW(h,&msg)){TranslateMessage(&msg);DispatchMessageW(&msg);}}return (int)msg.wParam;}

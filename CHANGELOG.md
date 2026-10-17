@@ -1,3 +1,11 @@
+# 0.1.9
+
+- Optimize uniform-width, prefix-free output generation by removing redundant per-result scalar accounting and rule dispatch when no checks remain; retain bounded CPU pacing/stop checks and exact line-byte quota boundaries.
+- Five alternating native-Linux durable-output runs (16,777,216 rows, four workers, manual mode) had identical SHA256; median full-process time improved from0.167432 to0.131254 seconds (~22% lower). No native Windows throughput claim.
+- Add centralized version macros, native VERSIONINFO and an explicit asInvoker/Windows10+ manifest with standard common-controls dependency.
+- Make the GUI and CLI MinGW link timestamps deterministic. Add a separate conventional MSVC x64 build/test script; native MSVC execution remains unverified here.
+- The reported Defender detection againstv0.1.8 remains unresolved. v0.1.9 is unsigned and not Defender-cleared; see SECURITY-NOTICE.md. Metadata and compiler options are for traceability/standard packaging, not proof of a false positive.
+
 # 0.1.8
 
 - Detect effective CPU capacity, available RAM and output filesystem space before generation (Windows APIs; Linux affinity and cgroup v1/v2 limits).
