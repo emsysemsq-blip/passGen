@@ -1,0 +1,51 @@
+[
+  {
+    "package": "binutils-mingw-w64-x86-64",
+    "version": "2.44-3+12+b1",
+    "archive_matches_signed_apt_metadata": true,
+    "matching_installed_files": 52,
+    "changed_or_missing": []
+  },
+  {
+    "package": "g++-mingw-w64-x86-64-posix",
+    "version": "14.2.0-19+27+b1",
+    "archive_matches_signed_apt_metadata": true,
+    "matching_installed_files": 835,
+    "changed_or_missing": []
+  },
+  {
+    "package": "gcc-mingw-w64-base",
+    "version": "14.2.0-19+27+b1",
+    "archive_matches_signed_apt_metadata": true,
+    "matching_installed_files": 6,
+    "changed_or_missing": []
+  },
+  {
+    "package": "gcc-mingw-w64-x86-64-posix",
+    "version": "14.2.0-19+27+b1",
+    "archive_matches_signed_apt_metadata": true,
+    "matching_installed_files": 709,
+    "changed_or_missing": []
+  },
+  {
+    "package": "gcc-mingw-w64-x86-64-posix-runtime",
+    "version": "14.2.0-19+27+b1",
+    "archive_matches_signed_apt_metadata": true,
+    "matching_installed_files": 11,
+    "changed_or_missing": []
+  },
+  {
+    "package": "mingw-w64-common",
+    "version": "12.0.0-5",
+    "archive_matches_signed_apt_metadata": true,
+    "matching_installed_files": 1674,
+    "changed_or_missing": []
+  },
+  {
+    "package": "mingw-w64-x86-64-dev",
+    "version": "12.0.0-5",
+    "archive_matches_signed_apt_metadata": true,
+    "matching_installed_files": 938,
+    "changed_or_missing": []
+  }
+]

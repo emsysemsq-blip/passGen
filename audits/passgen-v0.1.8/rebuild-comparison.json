@@ -1,0 +1,8 @@
+{
+  "published_sha256": "a32d6582075869014fb750e58f993d1f434998bb8c2842a16e464059134e93b8",
+  "rebuilt_sha256": "b2e0914ca3f2e01225e7ed36af79b7a0f7291ae223a1c6e9843cd27acffdb361",
+  "same_sections": true,
+  "same_file_except_link_timestamp_and_checksum": true,
+  "published_bytes": 3137853,
+  "rebuilt_bytes": 3137853
+}
