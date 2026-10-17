@@ -30,6 +30,19 @@ int main(){
   check(policy&&read(dir/"stopped.txt")==expected&&expected.compare(0,prefix.size(),prefix)==0,"Direct cursor and limits survive Stop, crash tail and Resume with exact ordered bytes");
   check(resumed.scanned.load()==resumed.total.load()&&resumed.written==25,"Pruned gaps do not lose or duplicate resumed combinations");
   auto examples=pg::preview(c);check(!examples.samples.empty(),"Direct preview finds feasible constrained words");
+  c={};c.direct_combinations=true;c.tokens={"a","b"};c.lower=true;c.min_length=c.max_length=18;c.threads=4;
+  pg::Progress flat;pg::run(c,(dir/"flat.txt").u8string(),false,flat);c.direct_combinations=false;pg::Progress reference;pg::run(c,(dir/"flat-reference.txt").u8string(),false,reference);
+  check(read(dir/"flat.txt")==read(dir/"flat-reference.txt")&&flat.constructed==262144&&flat.written==262144,"Proven legal direct jobs use the fast renderer with exact bytes and honest counters");
+  auto hash=[](const std::string& text){uint64_t value=14695981039346656037ull;for(unsigned char byte:text){value^=byte;value*=1099511628211ull;}return value;};
+  pg::Index huge=1;for(unsigned n=0;n<128;++n)huge*=2;const auto tail=dir/"wide-tail.txt";{std::ofstream output(tail,std::ios::binary);}
+  std::ostringstream body;body<<"PASSGEN_7\n"<<(huge-pg::Index(257))<<" 0 0 "<<hash("")<<"\n128 128 3 0 0 0 0 0 0 0 0 1\n- -\n2\n61\n62\n1\n61 1\n";auto content=body.str();{std::ofstream state(fs::u8path(tail.u8string()+".pgstate"),std::ios::binary);state<<content<<"CHECK "<<hash(content)<<'\n';}
+  pg::Progress wide;pg::run({},tail.u8string(),true,wide);std::string wideExpected;for(unsigned pos=119;pos<128;++pos)wideExpected+=std::string(pos,'b')+'a'+std::string(127-pos,'b')+'\n';wideExpected+=std::string(128,'b')+'\n';
+  check(read(tail)==wideExpected&&wide.constructed==10&&wide.scanned.load()==huge,"Narrow local traversal preserves a 128-bit resumed cursor and constrained prefix counts");
+  c={};c.direct_combinations=true;c.character_lengths=true;c.tokens={"a",std::string(4096,'X')};c.min_length=c.max_length=128;c.resource_percent=70;
+  pg::ResourceSnapshot small;small.logical_cpus=4;small.cpu_capacity=4;small.cpu_known=true;small.memory_known=true;small.memory_available_bytes=13ull*1024*1024;small.disk_known=true;small.disk_available_bytes=16ull*1024*1024;
+  pg::Progress bounded;pg::run(c,(dir/"scalar-buffer.txt").u8string(),false,bounded,{},&small);
+  check(read(dir/"scalar-buffer.txt")==std::string(128,'a')+'\n'&&bounded.constructed==1,"Final scalar length bounds buffers without multiplying by unusably long word size");
+  check(bounded.buffer_bytes>=129&&bounded.buffer_bytes<524289,"A constrained low-RAM plan fits the actual maximum line safely");
   fs::remove_all(dir);std::cout<<"PASS: direct prefix pruning, >64-bit skipped branches, no invalid constructed leaves, exact multiworker stop/crash/resume\n";return 0;
  }catch(const std::exception& e){std::cerr<<"FAIL: "<<e.what()<<" artifacts "<<dir<<'\n';return 1;}
 }

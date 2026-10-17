@@ -1,3 +1,18 @@
+# v0.1.13 validation
+
+- Native engine62 and resource-engine286 checks passed. Actual OpenCL backend76 and engine integration70 checks passed using the explicit PoCL CPU test device. Production does not select that CPU as a GPU; no physical GPU was available.
+- All70 independent capped-token ordered-output/crash-tail oracles passed both normally and with AddressSanitizer/UndefinedBehaviorSanitizer, without suppressions/preload. Existing CLI suites passed38 baseline comparisons,16 word/rule/crash cases, the64,512-row unique range and exact2^64/65/128 tails.
+- Expanded direct-traversal tests passed with ASAN/UBSAN and under Wine: huge impossible branches still construct zero leaves; first-commit Stop/crash/Resume remains byte-exact; proven-legal fast output equals the reference262,144-row file with correct constructed counters; a constrained128-bit resumed cursor constructs exactly the final10 expected combinations.
+- Windows x64 engine62, resource-engine286, direct traversal, GUI integration and actual checkpoint-lock/recovery tests passed under Wine. Custom-word table, scrolling, caps, Unicode and Resume checks remain enabled. This is not native Windows throughput or antivirus validation.
+- Three alternating repetitions across seven native CPU workloads matched by independently expected line count, byte count and SHA256. Full-process median ratios: word characters2.93x, capped2.00x, mixed-width words7.22x, uniform words1.98x, sparse caps1.96x, wide-rank tail1.93x. See paired-comparison.json/BENCHMARKS.md for samples. No universal/user-machine speedup is claimed.
+- Unrestricted flat dispatch requires fixed-width/prefix-free tokens, no token caps or adjacent-repeat rule, uniform scalar widths when needed, and required classes satisfied by affixes or every token. Thus every generated leaf is legal; constrained cases retain prefix pruning. Prefix-free constrained leaves skip redundant canonicalization only after branch caps/rules are checked.
+- Global ranks remain arbitrary precision. Each worker narrows to a bounded prefix block, then uses uint64 offsets inside recursion. The wide saved-rank test checks local-offset clipping, prefix cap counts and exact global cursor restoration.
+- Final scalar-length buffer bounds use the maximum ceiling(bytes/scalars) of the valid UTF-8 pool and charge affixes exactly. A low-RAM fixture with an unusable4096-character word and one short token produces the sole valid128-character output within its planned buffer; ASAN/UBSAN passes.
+- Sparse direct jobs write/release each bounded text buffer but aggregate checkpoint metadata. First batch, completion, quota, Stop and final loop exit force output flush before saving the cursor. Additional thresholds are512KiB,16,384 constructed combinations,256 waves or50ms, checked between waves. These are not hard real-time deadlines. Exceptions leave the previous durable checkpoint valid; Resume discards/replays an unsaved tail. Progress counters only advance after successful checkpoint save.
+- PASSGEN_7 remains unchanged: existing v0.1.12 jobs can Resume directly with the optimized implementation. Independent GUI/CLI MinGW rebuilds were byte-identical, timestamp0/AMD64/unsigned, GUI version0.1.13.0/asInvoker. See build-verification.json. Native MSVC/PowerShell and physical Windows remain unexecuted here.
+
+Historical validation follows.
+
 # v0.1.12 validation
 
 - Native engine 62 and resource-engine 286 checks passed. Capped quota/replay fixtures now explicitly use direct traversal. Existing CLI suites passed 70 independent capped-token ordered oracles/crash-tail resumes, all 16 word/rule cases, 38 baseline range comparisons, the 64,512-line unique 10..15 range, and exact tails ending at 2^64/65/128.

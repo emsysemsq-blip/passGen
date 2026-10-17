@@ -1,3 +1,25 @@
+# PassGen v0.1.13 speed regression fix
+
+Three alternating baseline/candidate repetitions, four CPU workers, manual resources, fresh normal file output through process exit including durable checkpoint/output writes. Hashing is outside timing. All paired files match by SHA256, byte count and independently expected line count.
+
+| Workload | Lines | v0.1.12 median | v0.1.13 median | Ratio |
+| --- | ---: | ---: | ---: | ---: |
+| Separate character mode | 1,048,576 | 0.015006 s | 0.011532 s | 1.30x |
+| Single-character word tokens | 1,048,576 | 0.032236 s | 0.010992 s | 2.93x |
+| Word characters with a maximum-two token | 551,124 | 0.032014 s | 0.016020 s | 2.00x |
+| Uniform two-character words | 1,048,576 | 0.033132 s | 0.016747 s | 1.98x |
+| Words with mixed scalar lengths | 283,953 | 0.415861 s | 0.057587 s | 7.22x |
+| Sparse capped words | 4,129 | 0.020541 s | 0.010500 s | 1.96x |
+| Capped tail near rank 4^128 | 551,124 | 0.068516 s | 0.035533 s | 1.93x |
+
+Native Linux cloud-overlay storage, effective four-core quota. Short jobs include process/setup/cache effects. The sparse job's raw space is 4^16; the wide job resumes token length128 at 4^128-4^10 and writes 71,094,996 bytes. No native Windows, user-workload, physical SSD or GPU speed claim. Short-job character timing varies with process/setup and cache effects; these samples do not establish a universal speedup.
+
+Raw observations: benchmarks/v0.1.13/paired-comparison.json. Preserve a v0.1.12 native CLI and run:
+
+```sh
+python3 tests/direct_speed_benchmark.py --baseline build/perf/passgen-v0.1.12-cli --candidate build/passgen-cli --output build/perf/direct-speed.json
+```
+
 # PassGen v0.1.12 direct word traversal
 
 A functional pruning fixture uses two words, maximum one use of each, token lengths 1..128. Exactly four complete combinations are constructed (`a`, `b`, `ab`, `ba`) while the raw rank bound is 2^129-2. Another fixture at length128 constructs zero leaves when caps or a missing required class make the tree impossible. These establish skipped work, not a sustained throughput or native Windows benchmark.

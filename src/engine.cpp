@@ -387,33 +387,49 @@ static unsigned classes(const std::string& text){
 // Metadata shared by workers; the odometer updates only the changed suffix.
 struct Alphabet {
  std::vector<unsigned> masks;std::vector<size_t> chars;
- unsigned required,affixMask;size_t affixChars,width;bool fixed,uniformChars;std::vector<unsigned> limits;bool limited=false;std::unique_ptr<DirectRules> direct;
+ unsigned required,affixMask,commonMask=15;size_t affixChars,width;bool fixed,uniformChars;std::vector<unsigned> limits;bool limited=false;std::unique_ptr<DirectRules> direct;
  explicit Alphabet(const Config& c):required(unsigned(c.lower)|(unsigned(c.upper)<<1)|(unsigned(c.digit)<<2)|(unsigned(c.symbol)<<3)),affixMask(classes(c.prefix)|classes(c.suffix)),affixChars(c.character_lengths?characters(c.prefix)+characters(c.suffix):0),width(c.tokens.front().size()),fixed(true),uniformChars(true){
   if(c.direct_combinations)direct.reset(new DirectRules(c));
-  for(const auto& token:c.tokens){auto limit=c.token_limits.find(token);limits.push_back(limit==c.token_limits.end()?0:limit->second);limited|=limits.back()!=0;masks.push_back(classes(token));chars.push_back(c.character_lengths?characters(token):0);fixed&=token.size()==width;uniformChars&=chars.back()==chars.front();}
+  for(const auto& token:c.tokens){auto limit=c.token_limits.find(token);limits.push_back(limit==c.token_limits.end()?0:limit->second);limited|=limits.back()!=0;masks.push_back(classes(token));commonMask&=masks.back();chars.push_back(c.character_lengths?characters(token):0);fixed&=token.size()==width;uniformChars&=chars.back()==chars.front();}
  }
 };
 struct RangeResult {std::string text;uint64_t lines=0,scanned=0,constructed=0;bool quota_hit=false,from_gpu=false;};
 static RangeResult generateDirectRange(const Config& c,Index begin,uint64_t span,const UniqueOutputs& unique,const Plan& plan,const DirectRules& rules,size_t maxLine,const std::atomic<bool>& stop,double fraction,uint64_t byteLimit){
  RangeResult result;result.text.reserve(size_t(std::min<uint64_t>(byteLimit,span*maxLine)));CpuBudget cpu(fraction,stop);uint64_t nodes=0;
  while(span&&!stop.load()){
-  auto location=directLocation(c,plan,rules,begin);auto remaining=rules.powers[location.length]-location.rank;
-  uint64_t amount=remaining<Index(span)?remaining.u64():span;Index rangeEnd=location.rank+Index(amount);
-  auto low=directDigits(c,location.rank,location.length),high=directDigits(c,rangeEnd-Index(1),location.length);
-  std::array<size_t,128> digits{};std::vector<unsigned char> used(c.tokens.size());std::string body;
-  auto covered=[&](const Index& node,unsigned depth){Index end=node+rules.powers[location.length-depth];Index first=node<location.rank?location.rank:node;Index last=end<rangeEnd?end:rangeEnd;return (last-first).u64();};
-  std::function<bool(unsigned,const Index&,bool,bool,size_t,unsigned,int)> visit;
-  visit=[&](unsigned depth,const Index& node,bool lower,bool upper,size_t count,unsigned mask,int previous){
+  auto location=directLocation(c,plan,rules,begin);
+  // Global cursors remain arbitrary precision. Narrow to one bounded prefix
+  // block once; recursion below never allocates or computes a big integer.
+  unsigned startDepth=0;
+  while(!rules.powers[location.length-startDepth].fits64()||rules.powers[location.length-startDepth].u64()>262144)++startDepth;
+  std::array<uint64_t,129> widths{};for(unsigned n=0;n<=location.length-startDepth;++n)widths[n]=rules.powers[n].u64();
+  auto low=directDigits(c,location.rank,location.length),high=low;
+  uint64_t firstRank=0;for(unsigned n=startDepth;n<location.length;++n)firstRank=firstRank*c.tokens.size()+low[n];
+  uint64_t amount=std::min(span,widths[location.length-startDepth]-firstRank),rangeEnd=firstRank+amount,highRank=rangeEnd-1;
+  for(unsigned n=location.length;n>startDepth;--n){high[n-1]=highRank%c.tokens.size();highRank/=c.tokens.size();}
+  std::array<size_t,128> digits{};std::vector<unsigned char> used(c.tokens.size());std::string body;body.reserve(maxLine);
+  size_t prefixChars=rules.affixChars;unsigned prefixMask=rules.affixMask;int prefixPrevious=-1;
+  bool prefixValid=rules.possible(c,location.length,0,prefixChars,prefixMask,location.segment->final_chars);
+  for(unsigned depth=0;depth<startDepth&&prefixValid;++depth){size_t token=low[depth];
+   prefixValid=(!c.no_repeat||int(token)!=prefixPrevious)&&(!rules.limits[token]||used[token]<rules.limits[token]);
+   prefixChars+=rules.chars[token];prefixMask|=rules.masks[token];
+   prefixValid=prefixValid&&rules.possible(c,location.length,depth+1,prefixChars,prefixMask,location.segment->final_chars);
+   if(prefixValid){++used[token];digits[depth]=token;body+=c.tokens[token];prefixPrevious=int(token);}
+  }
+  if(!prefixValid){result.scanned+=amount;begin+=amount;span-=amount;continue;}
+  auto covered=[&](uint64_t node,unsigned depth){return std::min(node+widths[location.length-depth],rangeEnd)-std::max(node,firstRank);};
+  std::function<bool(unsigned,uint64_t,bool,bool,size_t,unsigned,int)> visit;
+  visit=[&](unsigned depth,uint64_t node,bool lower,bool upper,size_t count,unsigned mask,int previous){
    if((nodes++&2047)==0)cpu.pace();
    if(stop.load())return false;
    if(!rules.possible(c,location.length,depth,count,mask,location.segment->final_chars)){result.scanned+=covered(node,depth);return true;}
    if(depth==location.length){
-    bool canonical=unique.canonical(body,digits.data(),location.length);
+    bool canonical=!unique.needsCanonicalization()||unique.canonical(body,digits.data(),location.length);
     if(canonical){size_t bytes=c.prefix.size()+body.size()+c.suffix.size()+1;if(bytes>byteLimit-result.text.size()){result.quota_hit=true;return false;}result.text+=c.prefix;result.text+=body;result.text+=c.suffix;result.text+='\n';++result.lines;}
     ++result.constructed;++result.scanned;return true;
    }
    size_t first=lower?low[depth]:0,last=upper?high[depth]:c.tokens.size()-1;
-   const auto& width=rules.powers[location.length-depth-1];Index child=node,offset=width;offset*=uint32_t(first);child+=offset;
+   uint64_t width=widths[location.length-depth-1],child=node+width*first;
    for(size_t token=first;token<=last;++token,child+=width){
     if(stop.load())return false;
     if((c.no_repeat&&int(token)==previous)||(rules.limits[token]&&used[token]>=rules.limits[token])){result.scanned+=covered(child,depth+1);continue;}
@@ -425,14 +441,18 @@ static RangeResult generateDirectRange(const Config& c,Index begin,uint64_t span
    }
    return true;
   };
-  if(!visit(0,Index(0),true,true,rules.affixChars,rules.affixMask,-1)){cpu.pace();return result;}
+  if(!visit(startDepth,0,true,true,prefixChars,prefixMask,prefixPrevious)){cpu.pace();return result;}
   begin+=amount;span-=amount;
  }
  cpu.pace();return result;
 }
 
 static RangeResult generateRange(const Config& c,Index begin,uint64_t span,const UniqueOutputs& unique,const Plan& plan,const Alphabet& alphabet,size_t maxLine,const std::atomic<bool>& stop,double cpu_fraction,uint64_t byte_limit=UINT64_MAX){
- if(alphabet.direct)return generateDirectRange(c,begin,span,unique,plan,*alphabet.direct,maxLine,stop,cpu_fraction,byte_limit);
+ // Every leaf is legal in this proven uniform case. Use the flat renderer;
+ // there is no rejected combination to generate or filter.
+ const bool directFlat=alphabet.direct&&alphabet.fixed&&!alphabet.limited&&!c.no_repeat&&!unique.needsCanonicalization()
+   &&(alphabet.required&~(alphabet.affixMask|alphabet.commonMask))==0&&(!c.character_lengths||alphabet.uniformChars);
+ if(alphabet.direct&&!directFlat)return generateDirectRange(c,begin,span,unique,plan,*alphabet.direct,maxLine,stop,cpu_fraction,byte_limit);
  RangeResult result;auto& text=result.text;text.reserve(size_t(std::min<uint64_t>(byte_limit,span*maxLine)));const size_t radix=c.tokens.size();
  CpuBudget cpu(cpu_fraction,stop);
  while(span){
@@ -455,7 +475,7 @@ static RangeResult generateRange(const Config& c,Index begin,uint64_t span,const
   // validation work. Emit bounded groups while retaining the same odometer,
   // checkpoint rank order, stop interval, and complete-line quota boundary.
   const bool unrestricted=!alphabet.limited&&alphabet.fixed&&!unique.needsCanonicalization()&&!c.no_repeat
-    &&(alphabet.required&~alphabet.affixMask)==0
+    &&(alphabet.required&~(alphabet.affixMask|alphabet.commonMask))==0
     &&(!c.character_lengths||(alphabet.uniformChars&&charCount==segment->final_chars));
   if(unrestricted){
    uint64_t emitted=0;
@@ -473,7 +493,7 @@ static RangeResult generateRange(const Config& c,Index begin,uint64_t span,const
       if(next)break;
      }
     }
-    emitted+=batch;result.lines+=batch;result.scanned+=batch;
+    emitted+=batch;result.lines+=batch;result.scanned+=batch;if(c.direct_combinations)result.constructed+=batch;
     if(batch<requested){cpu.pace();result.quota_hit=true;return result;}
    }
    begin+=amount;span-=amount;continue;
@@ -557,6 +577,16 @@ void run(Config c,const std::string& output,bool resume,Progress& progress,const
  Index count=total(c);Plan plan(c);UniqueOutputs unique(c,plan.tokens.minimum,plan.tokens.maximum);
  size_t maxToken=1;for(auto& t:c.tokens)maxToken=std::max(maxToken,t.size());
  size_t maxLine=maxToken*c.max_length+c.prefix.size()+c.suffix.size()+1;
+ if(c.character_lengths){
+  // Length is final Unicode scalars, not number of whole-word tokens.
+  // Bound bytes by the pool's maximum bytes/scalar ratio (1..4), with
+  // affixes charged exactly. Multiplying a long word by scalar length
+  // needlessly shrinks batches even though such long lines cannot occur.
+  size_t bytesPerScalar=1;
+  for(size_t n=0;n<c.tokens.size();++n){size_t scalars=unique.tokenCharacters(n);bytesPerScalar=std::max(bytesPerScalar,(c.tokens[n].size()+scalars-1)/scalars);}
+  size_t affix=unique.affixCharacters(),body=c.max_length>affix?c.max_length-affix:0;
+  maxLine=body*bytesPerScalar+c.prefix.size()+c.suffix.size()+1;
+ }
  uint64_t buffer=c.resource_percent?limits.buffer_bytes_per_worker:4*1024*1024;
  require(!c.resource_percent||buffer>=maxLine,"A result line exceeds the available RAM buffer budget");
  progress.direct_combinations=c.direct_combinations;progress.constructed=0;
@@ -625,6 +655,15 @@ void run(Config c,const std::string& output,bool resume,Progress& progress,const
  if(s.next==count||progress.stop)return;
  size_t gpuBatches=0;
  Workers workers(c.threads);std::unique_ptr<Workers> gpuWorker;if(gpu)gpuWorker.reset(new Workers(1));
+ uint64_t pendingConstructed=0,pendingGpu=0,lastSavedOffset=s.offset;unsigned pendingWaves=0;bool firstCommit=true;
+ auto lastCommit=std::chrono::steady_clock::now();
+ auto commit=[&]{
+  file.flush();s.tailhash=hash(file.tail(s.offset));save(cp,s);
+  progress.constructed.fetch_add(pendingConstructed);
+  if(pendingGpu){progress.gpu_used=true;progress.gpu_scanned.fetch_add(pendingGpu);}
+  progress.scanned=s.next;progress.written=s.lines;progress.bytes=s.offset;
+  pendingConstructed=0;pendingGpu=0;pendingWaves=0;firstCommit=false;lastSavedOffset=s.offset;lastCommit=std::chrono::steady_clock::now();
+ };
  while(s.next<count&&!progress.stop){
   struct Task {Index begin;uint64_t span;std::future<RangeResult> result;bool gpu=false;};
   std::vector<Task> tasks;Index end=s.next;
@@ -671,11 +710,14 @@ void run(Config c,const std::string& output,bool resume,Progress& progress,const
   // committed rank prefix is kept; later partial worker results are discarded.
   for(auto& task:tasks)if(task.result.valid())task.result.get();
   if(c.direct_combinations&&completeWave)next.next=end;
-  file.flush();next.tailhash=hash(file.tail(next.offset));save(cp,next);s=std::move(next);
-  progress.constructed.fetch_add(constructed);
-  if(gpuCommitted){progress.gpu_used=true;progress.gpu_scanned.fetch_add(gpuCommitted);}
-  progress.scanned=s.next;progress.written=s.lines;progress.bytes=s.offset;
-
+  s=std::move(next);pendingConstructed+=constructed;pendingGpu+=gpuCommitted;++pendingWaves;
+  // Sparse pruned blocks must not force a durable replacement per few lines.
+  // Only metadata is accumulated; text buffers are written and released above.
+  // A crash replays any unsaved tail from the previous durable cursor.
+  if(!c.direct_combinations||firstCommit||progress.stop||s.next==count||s.offset-lastSavedOffset>=512*1024
+     ||pendingConstructed>=16384||pendingWaves>=256||std::chrono::steady_clock::now()-lastCommit>=std::chrono::milliseconds(50))commit();
  }
+ // Stop may arrive just after the last threshold check, before the loop guard.
+ if(pendingWaves)commit();
 }
 }

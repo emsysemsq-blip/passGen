@@ -1,3 +1,12 @@
+# 0.1.13
+
+- Restore the buffered flat renderer for direct jobs whose every combination is provably legal. Retain prefix pruning for caps, adjacency, ambiguous words and other constrained cases; do not generate rejected passwords to regain speed.
+- Size character-length batches using a safe UTF-8 bytes-per-scalar bound instead of multiplying word bytes by final scalar length.
+- Narrow arbitrary-precision cursors to bounded prefix blocks once, use uint64 offsets inside recursive traversal, and avoid redundant cap canonicalization for prefix-free tokens.
+- Aggregate sparse direct-job checkpoints with bounded thresholds and always commit the first batch, completion, quota and Stop. Preserve output-before-checkpoint order and replay unsaved crash tails.
+- Keep PASSGEN_7 and byte-exact raw-rank order, including a constrained resumed tail ending at 2^128. Add fast-path counter and wide-prefix tests plus a reproducible alternating benchmark.
+- Native Linux three-pair durable-output measurements: word-character sample2.93x, capped2.00x, mixed-width words7.22x, uniform words1.98x, sparse caps1.96x, wide-rank tail1.93x. Files match by count/bytes/SHA256. These are not native Windows or user-system speeds.
+
 # 0.1.12
 
 - Default the GUI to whole-word input with an empty editor. Synchronize the token table after actual text/mode changes, including multiline WM_SETTEXT/paste; invalid character-mode multiline input clears old rows and explains the mode. Keep the selected dropdown visible when navigating to scrolled rows.

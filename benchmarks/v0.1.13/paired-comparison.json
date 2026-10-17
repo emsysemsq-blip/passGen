@@ -1,0 +1,342 @@
+{
+  "scope": "Native CLI, four workers, manual resources, CPU; normal durable output and checkpoint writes. Full process timing; hashing excluded. Not native Windows or physical GPU throughput.",
+  "executables": {
+    "baseline": {
+      "path": "/workspace/passGen/build/perf/passgen-v0.1.12-cli",
+      "sha256": "801f24b47b7f0fb70d071f0344c218e6eec11a0fedfd963a69c26dd9ed0f6b1f"
+    },
+    "candidate": {
+      "path": "/workspace/passGen/build/passgen-cli",
+      "sha256": "f4bc6fc73f228fcf4fcf75fb5d91a92a86ff9b180a9d50136251cc0a50453869"
+    }
+  },
+  "cases": [
+    {
+      "case": "characters",
+      "args": [
+        "--chars",
+        "abcd",
+        "--min",
+        "10",
+        "--max",
+        "10"
+      ],
+      "expected_lines": 1048576,
+      "runs": [
+        {
+          "version": "baseline",
+          "seconds": 0.01500579301500693
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.011738853005226701
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.009849218011368066
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.011312681017443538
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.0179036209883634
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.011531645024660975
+        }
+      ],
+      "bytes": 11534336,
+      "lines": 1048576,
+      "sha256": "4267e202c9f8a732d6153be478381e7698a46d63a2d14f4e5a8a1de34e1d7f1b",
+      "median_seconds": {
+        "baseline": 0.01500579301500693,
+        "candidate": 0.011531645024660975
+      },
+      "speedup": 1.301270805935868
+    },
+    {
+      "case": "word_characters",
+      "args": [
+        "--words",
+        "a b c d",
+        "--min",
+        "10",
+        "--max",
+        "10"
+      ],
+      "expected_lines": 1048576,
+      "runs": [
+        {
+          "version": "baseline",
+          "seconds": 0.042302046000259
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.010992066003382206
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.03223616199102253
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.010321913985535502
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.031519550015218556
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.013541261985665187
+        }
+      ],
+      "bytes": 11534336,
+      "lines": 1048576,
+      "sha256": "4267e202c9f8a732d6153be478381e7698a46d63a2d14f4e5a8a1de34e1d7f1b",
+      "median_seconds": {
+        "baseline": 0.03223616199102253,
+        "candidate": 0.010992066003382206
+      },
+      "speedup": 2.9326754389123586
+    },
+    {
+      "case": "capped_word_characters",
+      "args": [
+        "--words",
+        "a b c d",
+        "--limit",
+        "a",
+        "2",
+        "--min",
+        "10",
+        "--max",
+        "10"
+      ],
+      "expected_lines": 551124,
+      "runs": [
+        {
+          "version": "baseline",
+          "seconds": 0.039169440016848966
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.014911603007931262
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.03201391300535761
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.016019695001887158
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.03123604998108931
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.018912216008175164
+        }
+      ],
+      "bytes": 6062364,
+      "lines": 551124,
+      "sha256": "4d06874d1c8adfed28517ceb2bbd040aa8b18c4d55ebfb1eb989d9c12c06339b",
+      "median_seconds": {
+        "baseline": 0.03201391300535761,
+        "candidate": 0.016019695001887158
+      },
+      "speedup": 1.9984096452264724
+    },
+    {
+      "case": "uniform_words",
+      "args": [
+        "--words",
+        "aa bb cc dd",
+        "--min",
+        "20",
+        "--max",
+        "20"
+      ],
+      "expected_lines": 1048576,
+      "runs": [
+        {
+          "version": "baseline",
+          "seconds": 0.03313232000800781
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.01665686399792321
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.032685287995263934
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.02616477699484676
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.04013573701377027
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.01674711299710907
+        }
+      ],
+      "bytes": 22020096,
+      "lines": 1048576,
+      "sha256": "2bc2b5bac96319a0e68d7167c29d0cde5636fdb7de17796dbfc1b1ee4b5820f4",
+      "median_seconds": {
+        "baseline": 0.03313232000800781,
+        "candidate": 0.01674711299710907
+      },
+      "speedup": 1.978389947791431
+    },
+    {
+      "case": "mixed_word_widths",
+      "args": [
+        "--words",
+        "a bb ccc dddd",
+        "--min",
+        "20",
+        "--max",
+        "20"
+      ],
+      "expected_lines": 283953,
+      "runs": [
+        {
+          "version": "baseline",
+          "seconds": 0.37601750501198694
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.0563210969849024
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.4179916300054174
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.05824811299680732
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.4158611680031754
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.057587354007409886
+        }
+      ],
+      "bytes": 5963013,
+      "lines": 283953,
+      "sha256": "f1e120aafc2138b6df1f2b8eaf75dd90be242aa1e7d7ee7c71578efc14abd7b6",
+      "median_seconds": {
+        "baseline": 0.4158611680031754,
+        "candidate": 0.057587354007409886
+      },
+      "speedup": 7.221397391338134
+    },
+    {
+      "case": "sparse_capped_words",
+      "args": [
+        "--words",
+        "a b c d",
+        "--limit",
+        "a",
+        "1",
+        "--limit",
+        "b",
+        "1",
+        "--limit",
+        "c",
+        "1",
+        "--min",
+        "16",
+        "--max",
+        "16"
+      ],
+      "expected_lines": 4129,
+      "runs": [
+        {
+          "version": "baseline",
+          "seconds": 0.022237136989133433
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.010607286996673793
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.020540994009934366
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.010499655996682122
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.02026077901246026
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.00974161399062723
+        }
+      ],
+      "bytes": 70193,
+      "lines": 4129,
+      "sha256": "c446f392ca4385993db5e6ab840e6504d2dad2b0fe1ec86366974779fb7112f7",
+      "median_seconds": {
+        "baseline": 0.020540994009934366,
+        "candidate": 0.010499655996682122
+      },
+      "speedup": 1.9563492381488778
+    },
+    {
+      "case": "wide_rank_capped_characters",
+      "args": null,
+      "expected_lines": 551124,
+      "runs": [
+        {
+          "version": "baseline",
+          "seconds": 0.06851579499198124
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.03531132897478528
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.06709772400790825
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.03553298700717278
+        },
+        {
+          "version": "baseline",
+          "seconds": 0.08876108101685531
+        },
+        {
+          "version": "candidate",
+          "seconds": 0.04490926399012096
+        }
+      ],
+      "bytes": 71094996,
+      "lines": 551124,
+      "sha256": "b92e23d6a7803da957d8d36c82e5cdca444a52ced8e353f172c890530bb2ca27",
+      "median_seconds": {
+        "baseline": 0.06851579499198124,
+        "candidate": 0.03553298700717278
+      },
+      "speedup": 1.9282306600948147
+    }
+  ]
+}
