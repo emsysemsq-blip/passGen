@@ -5,6 +5,7 @@
 #include <atomic>
 #include <functional>
 #include <mutex>
+#include <map>
 #include "index.hpp"
 #include "resources.hpp"
 namespace pg {
@@ -25,6 +26,8 @@ public:
 };
 struct Config {
  std::vector<std::string> tokens;
+ // Missing token: unlimited. Otherwise maximum generated-token uses per row.
+ std::map<std::string,unsigned> token_limits;
  unsigned min_length=1, max_length=1, threads=1;
  bool character_lengths=false;
  bool lower=false, upper=false, digit=false, symbol=false, no_repeat=false;

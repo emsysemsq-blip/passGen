@@ -1,3 +1,11 @@
+# 0.1.11
+
+- Add an editable per-token table beside Input, with Always (unlimited) or a maximum of 1..10 selections per generated row. The same token may be absent; no presence requirement is introduced.
+- Track bounded-token frequencies incrementally in the CPU odometer. Preserve the unrestricted fast path when every token is Always. Capped jobs explicitly select CPU; the OpenCL path remains available for uncapped jobs.
+- Make ambiguous-word canonicalization respect token caps, so a forbidden earlier spelling cannot suppress an allowed equivalent output. Exact line deduplication remains mandatory.
+- Add repeatable CLI --limit TOKEN N and save caps in PASSGEN_6. Read schemas 1..5 as unlimited; Resume preserves saved caps independently of current form edits.
+- Test capped-token order, ambiguous aliases, Unicode, absence, Always, cap 10, quota/resume, crash-tail recovery and the native Windows dropdown through Wine. No new physical GPU, native Windows or Defender verdict is claimed.
+
 # 0.1.10
 
 - Add a real optional OpenCL 1.2 generation backend, loaded dynamically, selecting GPU devices only in production. No SDK/runtime/driver is downloaded by the application.

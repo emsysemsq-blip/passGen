@@ -128,6 +128,7 @@ Index total(const Config& c){
  require(c.resource_percent<=100,"Resource percentage must be 0..100");
  require(c.tokens.size()<=100000,"Too many input tokens (maximum 100000)");
  require(!c.tokens.empty(),"Enter at least one character or word");
+ for(const auto& limit:c.token_limits){require(limit.second>=1&&limit.second<=10,"Token limit must be 1..10 (omit for Always)");require(std::find(c.tokens.begin(),c.tokens.end(),limit.first)!=c.tokens.end(),"Limited token is not in the input alphabet");}
  require(c.min_length>=1 && c.max_length>=c.min_length && c.max_length<=128,"Length must be 1..128 and minimum <= maximum");
  require(c.threads>=1 && c.threads<=32,"Worker count must be 1..32");
  size_t longest=0;for(auto& s:c.tokens){require(!s.empty()&&s.find_first_of("\r\n") == std::string::npos && s.find('\0')==std::string::npos,"Invalid token");longest=std::max(longest,s.size());}
@@ -276,22 +277,25 @@ static void replace(const fs::path& a,const fs::path& b){
 static std::string encode(const std::string& s){static const char h[]="0123456789abcdef";std::string out;for(unsigned char b:s){out+=h[b>>4];out+=h[b&15];}return out.empty()?"-":out;}
 static std::string decode(const std::string& s){if(s=="-")return {};require(s.size()%2==0,"Invalid checkpoint");std::string out;auto val=[](char c){if(c>='0'&&c<='9')return c-'0';if(c>='a'&&c<='f')return c-'a'+10;throw std::runtime_error("Invalid checkpoint");};for(size_t i=0;i<s.size();i+=2)out+=char(val(s[i])*16+val(s[i+1]));return out;}
 struct State{Config c;Index next=0;uint64_t lines=0,offset=0,tailhash=hash("");};
-static std::string serialize(const State& s){std::ostringstream o;o<<"PASSGEN_5\n"<<s.next<<' '<<s.lines<<' '<<s.offset<<' '<<s.tailhash<<'\n';auto& c=s.c;o<<c.min_length<<' '<<c.max_length<<' '<<c.threads<<' '<<c.lower<<' '<<c.upper<<' '<<c.digit<<' '<<c.symbol<<' '<<c.no_repeat<<' '<<c.character_lengths<<' '<<c.resource_percent<<' '<<unsigned(c.compute_mode)<<'\n'<<encode(c.prefix)<<' '<<encode(c.suffix)<<'\n'<<c.tokens.size()<<'\n';for(auto& t:c.tokens)o<<encode(t)<<'\n';return o.str();}
+static std::string serialize(const State& s){std::ostringstream o;o<<"PASSGEN_6\n"<<s.next<<' '<<s.lines<<' '<<s.offset<<' '<<s.tailhash<<'\n';auto& c=s.c;o<<c.min_length<<' '<<c.max_length<<' '<<c.threads<<' '<<c.lower<<' '<<c.upper<<' '<<c.digit<<' '<<c.symbol<<' '<<c.no_repeat<<' '<<c.character_lengths<<' '<<c.resource_percent<<' '<<unsigned(c.compute_mode)<<'\n'<<encode(c.prefix)<<' '<<encode(c.suffix)<<'\n'<<c.tokens.size()<<'\n';for(auto& t:c.tokens)o<<encode(t)<<'\n';o<<c.token_limits.size()<<'\n';for(const auto& entry:c.token_limits)o<<encode(entry.first)<<' '<<entry.second<<'\n';return o.str();}
 static void save(const fs::path& p,const State& s){auto tmp=p;tmp+=".tmp";std::error_code ec;fs::remove(tmp,ec);{File f(tmp,false);auto body=serialize(s);f.write(body+"CHECK "+std::to_string(hash(body))+"\n");f.flush();}replace(tmp,p);}
 static State load(const fs::path& p){
  require(fs::file_size(p)<=16*1024*1024,"Checkpoint too large");std::ifstream f(p,std::ios::binary);std::string all((std::istreambuf_iterator<char>(f)),{});
  auto at=all.rfind("CHECK ");require(at!=std::string::npos,"Invalid checkpoint");auto body=all.substr(0,at);std::istringstream check(all.substr(at+6));uint64_t checksum=0;
  require(bool(check>>checksum)&&checksum==hash(body),"Checkpoint checksum mismatch");
  std::istringstream in(body);std::string magic,a,b;State s;size_t n=0;auto& c=s.c;
- require(bool(in>>magic>>s.next>>s.lines>>s.offset>>s.tailhash>>c.min_length>>c.max_length>>c.threads>>c.lower>>c.upper>>c.digit>>c.symbol>>c.no_repeat)&&(magic=="PASSGEN_1"||magic=="PASSGEN_2"||magic=="PASSGEN_3"||magic=="PASSGEN_4"||magic=="PASSGEN_5"),"Invalid checkpoint");
- if(magic=="PASSGEN_3"||magic=="PASSGEN_4"||magic=="PASSGEN_5")require(bool(in>>c.character_lengths),"Invalid checkpoint");
- if(magic=="PASSGEN_4"||magic=="PASSGEN_5")require(bool(in>>c.resource_percent),"Invalid resource policy");
- if(magic=="PASSGEN_5"){unsigned mode=0;require(bool(in>>mode)&&mode<=2,"Invalid compute mode");c.compute_mode=static_cast<ComputeMode>(mode);}
+ require(bool(in>>magic>>s.next>>s.lines>>s.offset>>s.tailhash>>c.min_length>>c.max_length>>c.threads>>c.lower>>c.upper>>c.digit>>c.symbol>>c.no_repeat),"Invalid checkpoint");
+ require(magic.size()==9&&magic.compare(0,8,"PASSGEN_")==0&&magic[8]>='1'&&magic[8]<='6',"Invalid checkpoint schema");
+ unsigned schema=unsigned(magic[8]-'0');
+ if(schema>=3)require(bool(in>>c.character_lengths),"Invalid checkpoint");
+ if(schema>=4)require(bool(in>>c.resource_percent),"Invalid resource policy");
+ if(schema>=5){unsigned mode=0;require(bool(in>>mode)&&mode<=2,"Invalid compute mode");c.compute_mode=static_cast<ComputeMode>(mode);}
  require(bool(in>>a>>b>>n)&&n<=100000,"Invalid checkpoint");c.prefix=decode(a);c.suffix=decode(b);
  for(size_t i=0;i<n;++i){require(bool(in>>a),"Invalid checkpoint");c.tokens.push_back(decode(a));}
+ if(schema==6){size_t limits=0;require(bool(in>>limits)&&limits<=n,"Invalid token limits");for(size_t i=0;i<limits;++i){unsigned cap=0;require(bool(in>>a>>cap),"Invalid token limit");require(c.token_limits.emplace(decode(a),cap).second,"Duplicate token limit");}}
  auto count=total(c);require(s.next<=count&&s.lines<=s.next&&s.offset<=INT64_MAX,"Invalid checkpoint position");
  auto range=bounds(c);UniqueOutputs unique(c,range.minimum,range.maximum);
- require(magic=="PASSGEN_3"||magic=="PASSGEN_4"||magic=="PASSGEN_5"||!unique.needsCanonicalization(),"This older word checkpoint may contain duplicates. Start a new output with PassGen 0.1.2");
+ require(schema>=3||!unique.needsCanonicalization(),"This older word checkpoint may contain duplicates. Start a new output with PassGen 0.1.2");
  return s;
 }
 // A run owns its workers; no thread creation per output block.
@@ -310,9 +314,9 @@ static unsigned classes(const std::string& text){
 // Metadata shared by workers; the odometer updates only the changed suffix.
 struct Alphabet {
  std::vector<unsigned> masks;std::vector<size_t> chars;
- unsigned required,affixMask;size_t affixChars,width;bool fixed,uniformChars;
+ unsigned required,affixMask;size_t affixChars,width;bool fixed,uniformChars;std::vector<unsigned> limits;bool limited=false;
  explicit Alphabet(const Config& c):required(unsigned(c.lower)|(unsigned(c.upper)<<1)|(unsigned(c.digit)<<2)|(unsigned(c.symbol)<<3)),affixMask(classes(c.prefix)|classes(c.suffix)),affixChars(c.character_lengths?characters(c.prefix)+characters(c.suffix):0),width(c.tokens.front().size()),fixed(true),uniformChars(true){
-  for(const auto& token:c.tokens){masks.push_back(classes(token));chars.push_back(c.character_lengths?characters(token):0);fixed&=token.size()==width;uniformChars&=chars.back()==chars.front();}
+  for(const auto& token:c.tokens){auto limit=c.token_limits.find(token);limits.push_back(limit==c.token_limits.end()?0:limit->second);limited|=limits.back()!=0;masks.push_back(classes(token));chars.push_back(c.character_lengths?characters(token):0);fixed&=token.size()==width;uniformChars&=chars.back()==chars.front();}
  }
 };
 struct RangeResult {std::string text;uint64_t lines=0,scanned=0;bool quota_hit=false,from_gpu=false;};
@@ -330,15 +334,15 @@ static RangeResult generateRange(const Config& c,Index begin,uint64_t span,const
   std::array<size_t,128> digits{};
   if(rank.fits64()){uint64_t value=rank.u64();for(unsigned i=length;i>0;--i){digits[i-1]=value%radix;value/=radix;}}
   else for(unsigned i=length;i>0;--i)digits[i-1]=rank.divide(uint32_t(radix));
-  unsigned counts[4]={};size_t charCount=alphabet.affixChars;unsigned adjacent=0;
+  unsigned counts[4]={};size_t charCount=alphabet.affixChars;unsigned adjacent=0,overLimits=0;std::vector<unsigned char> uses(alphabet.limited?radix:0);
   if(c.character_lengths&&alphabet.uniformChars)charCount+=length*alphabet.chars.front();
-  auto account=[&](size_t token,int delta){if(c.character_lengths&&!alphabet.uniformChars)charCount+=delta*alphabet.chars[token];if(alphabet.required)for(unsigned bit=0;bit<4;++bit)if(alphabet.masks[token]&(1u<<bit))counts[bit]+=delta;};
+  auto account=[&](size_t token,int delta){if(alphabet.limited&&alphabet.limits[token]){auto limit=alphabet.limits[token];if(delta>0){if(++uses[token]==limit+1)++overLimits;}else if(uses[token]--==limit+1)--overLimits;}if(c.character_lengths&&!alphabet.uniformChars)charCount+=delta*alphabet.chars[token];if(alphabet.required)for(unsigned bit=0;bit<4;++bit)if(alphabet.masks[token]&(1u<<bit))counts[bit]+=delta;};
   std::string line=c.prefix;for(unsigned i=0;i<length;++i){account(digits[i],1);if(c.no_repeat&&i&&digits[i]==digits[i-1])++adjacent;if(alphabet.fixed)line+=c.tokens[digits[i]];}
   if(alphabet.fixed){line+=c.suffix;line+='\n';}
   // A uniform, prefix-free alphabet with no active filters has no per-result
   // validation work. Emit bounded groups while retaining the same odometer,
   // checkpoint rank order, stop interval, and complete-line quota boundary.
-  const bool unrestricted=alphabet.fixed&&!unique.needsCanonicalization()&&!c.no_repeat
+  const bool unrestricted=!alphabet.limited&&alphabet.fixed&&!unique.needsCanonicalization()&&!c.no_repeat
     &&(alphabet.required&~alphabet.affixMask)==0
     &&(!c.character_lengths||(alphabet.uniformChars&&charCount==segment->final_chars));
   if(unrestricted){
@@ -364,7 +368,7 @@ static RangeResult generateRange(const Config& c,Index begin,uint64_t span,const
   }
   for(uint64_t n=0;n<amount;++n){
    if((n&2047)==0){cpu.pace();if(stop.load())return result;}
-   bool valid=(!c.no_repeat||adjacent==0)&&(!c.character_lengths||charCount==segment->final_chars);
+   bool valid=!overLimits&&(!c.no_repeat||adjacent==0)&&(!c.character_lengths||charCount==segment->final_chars);
    if(valid&&alphabet.required)for(unsigned bit=0;bit<4;++bit)if((alphabet.required&(1u<<bit))&&!(alphabet.affixMask&(1u<<bit))&&!counts[bit]){valid=false;break;}
    if(valid){
     if(alphabet.fixed&&!unique.needsCanonicalization()){
@@ -449,7 +453,8 @@ void run(Config c,const std::string& output,bool resume,Progress& progress,const
  const size_t testCap=gpu_test?gpu_test->max_batch_candidates:0;
  if(c.compute_mode!=ComputeMode::Cpu&&s.next<count&&!progress.stop){
   progress.compute_status.set("Inspecting OpenCL GPU and driver...");
-  if(!alphabet.fixed||(!alphabet.uniformChars&&c.character_lengths)||unique.needsCanonicalization())
+  if(alphabet.limited)progress.compute_status.set("CPU: per-token repetition limits");
+  else if(!alphabet.fixed||(!alphabet.uniformChars&&c.character_lengths)||unique.needsCanonicalization())
    progress.compute_status.set("CPU: variable-width or ambiguous input");
   else if(c.compute_mode==ComputeMode::Automatic&&count-s.next<Index(8192)&&!(gpu_test&&gpu_test->skip_speed_selection))
    progress.compute_status.set("CPU: small job; GPU startup would add overhead");

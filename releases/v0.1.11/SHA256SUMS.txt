@@ -1,0 +1,4 @@
+7668bf0a2ca541aa71c10b14f6c67aeddc4737471beac27ab14195b3956dc018  PassGen-v0.1.11-source.zip
+d08f46e97a14aad15726d5cd60ffdc2d15adba014fac6b687612883ae21e6994  PassGen-v0.1.11-win64.exe
+2be55e00ddf1f12efacb9f18dfae56cd25d8b4c6648d6361f971bbedba335747  PassGen-v0.1.11-win64.zip
+b4c1c95a57fd474fef78d59ace286f8d9afc2cd1dbefbe088b443426dc69e01a  SECURITY-NOTICE.md

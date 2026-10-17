@@ -1,3 +1,19 @@
+# v0.1.11 validation
+
+- Native Linux engine: 62 checks passed. Resource engine: 286 checks passed, including new exact capped-token disk-quota prefixes and partial Resume for both prefix-free and ambiguous word pools.
+- New independent Python oracle: 70 exhaustive cases passed, with exact ordered output and crash-tail Resume. Covers random ambiguous word pools, ASCII/Persian/emoji, per-token maxima, optional absence, unlimited tokens, limit 10, final-character/token lengths, adjacent-token rules and affixes. Invalid caps and absent-token limits are rejected before output creation.
+- The same 70 independent cases and resumes passed under AddressSanitizer/UndefinedBehaviorSanitizer, without suppressions or preload.
+- Actual OpenCL backend 76 checks and hybrid integration 70 checks passed using PoCL's explicitly allowed CPU test device. Uncapped jobs retain the GPU path; capped jobs report CPU selection. This is not a physical GPU performance test.
+- Windows x64 binaries cross-compiled. Under Wine, engine 62 and resource-engine 286 checks passed, together with actual checkpoint-lock/recovery tests. GUI integration passed the existing Unicode, Stop/Resume and dedup cases plus the new 11-choice token dropdown, maximum-two output, unlimited alternative token, and Resume preserving saved caps after form edits. Native Windows remains untested.
+- Existing independent CLI suites passed all 16 word/rule/crash-replay cases, the 64,512-row unique 10..15 range, legacy checkpoint upgrades, and exact tails ending at 2^64/65/128.
+- Independent second GUI and CLI MinGW builds were byte-identical. Inspection confirms AMD64, timestamp zero, no Authenticode certificate, and GUI version 0.1.11.0/asInvoker. See benchmarks/v0.1.11/build-verification.json. The MSVC/PowerShell paths remain unexecuted here.
+- PASSGEN_6 stores per-token limits. Schemas 1..5 load with unlimited token repetition and preserve their other saved settings. Caps count generated token selections, not substrings inside other words or affix text. Exact deduplication chooses the first feasible tokenization under the saved caps.
+- No new throughput or Defender-clearance claim. Ambiguous capped words may require more CPU work than unrestricted characters; the unlimited fast path remains enabled. No physical GPU or native Windows validation was available.
+
+Reproduce: build normally, then run `python3 tests/token_limits_test.py ./build/passgen-cli`. Sanitized builds must link src/engine.cpp, src/gpu.cpp and src/cli.cpp with `-fsanitize=address,undefined -fno-omit-frame-pointer -pthread -ldl`.
+
+Historical validation follows.
+
 # v0.1.10 validation
 
 - Native Linux: 62 engine checks and 267 resource-engine checks passed. Resource discovery/planning and checkpoint retry suites passed. The latest one-core pacing fixture measured 25.56% and 69.69% process CPU/wall for 25% and 70% targets; these are approximate worker-generation controls.

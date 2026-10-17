@@ -100,7 +100,7 @@ int main(){
    pg::run({},output.u8string(),true,progress,[&](const pg::Config& saved){manual=saved.resource_percent==0&&saved.threads==2;},&unknown);
    check(manual&&read(output)=="a\nb\naa\nab\nba\nbb\n","Legacy checkpoint remains unrestricted and ignores unknown resource detection");
    check(progress.disk_budget_bytes.load()==UINT64_MAX&&progress.active_workers.load()==2,"Legacy progress preserves its original worker policy");
-   check(read(fs::u8path(output.u8string()+".pgstate")).find("PASSGEN_5\n")==0,"Legacy checkpoint upgrades to the new durable schema");
+   check(read(fs::u8path(output.u8string()+".pgstate")).find("PASSGEN_6\n")==0,"Legacy checkpoint upgrades to the new durable schema");
   }
 
   config={};config.tokens={"a","b"};config.max_length=2;config.resource_percent=70;
@@ -111,6 +111,12 @@ int main(){
   auto low=snapshot();low.memory_available_bytes=1024*1024;rejectsBeforeCreate("low-memory",low,config);
   auto lineMemory=snapshot();lineMemory.memory_available_bytes=13ull*1024*1024;auto hugeLine=config;hugeLine.tokens={std::string(4096,'x')};hugeLine.max_length=128;rejectsBeforeCreate("line-buffer-memory",lineMemory,hugeLine);
   for(unsigned missing=0;missing<3;++missing){auto unknown=snapshot();if(missing==0)unknown.cpu_known=false;if(missing==1)unknown.memory_known=false;if(missing==2)unknown.disk_known=false;rejectsBeforeCreate("unknown-"+std::to_string(missing),unknown,config);}
+
+  config={};config.tokens={"a","b"};config.token_limits={{"a",1}};config.max_length=3;config.compute_mode=pg::ComputeMode::GpuPreferred;
+  const auto capped=complete(config,folder/"capped-reference.txt");check(capped=="a\nb\nab\nba\nbb\nabb\nbab\nbba\nbbb\n","Capped-token oracle includes zero uses and suppresses only excessive repetitions");
+  budget_case(folder,"capped-partial",config,4,capped);
+  config.tokens={"a","aa","b"};config.token_limits={{"a",1},{"aa",1}};config.max_length=4;
+  const auto cappedAliases=complete(config,folder/"capped-alias-reference.txt");budget_case(folder,"capped-alias-partial",config,7,cappedAliases);
 
   // Measure real process CPU time; Windows std::clock measures wall time.
   config={};config.tokens={"a","b"};config.min_length=config.max_length=24;config.upper=true;config.resource_percent=25;

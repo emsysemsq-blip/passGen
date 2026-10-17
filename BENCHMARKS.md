@@ -1,3 +1,7 @@
+# PassGen v0.1.11 repetition caps
+
+No new throughput claim is made. Unlimited jobs retain the unrestricted CPU fast path and existing GPU eligibility. Capped jobs use incremental frequency tracking on CPU; ambiguous words also need cap-aware canonicalization and may be slower. Historical timings below do not measure these new capped workloads.
+
 # PassGen v0.1.10 compute selection
 
 The new Auto mode compares a warmed OpenCL sample, including transfer and compaction, with the CPU renderer. It enables the GPU only if that sample is faster. GPU-preferred mode bypasses that timing choice while retaining correctness checks and CPU fallback.
