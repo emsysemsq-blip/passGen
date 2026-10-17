@@ -1,3 +1,12 @@
+# 0.1.4
+
+- Replace the GUI's required-ASCII-symbol checkbox with a manual Symbols edit field.
+- Add only the exact typed symbol characters to the generation alphabet; symbols are optional in each password as requested.
+- Deduplicate repeated symbols and existing input overlap; support literal Unicode symbols, word input and symbol-only input.
+- Add CLI --symbols TEXT; preserve the legacy --symbol flag and existing checkpoint behavior.
+- Keep schema PASSGEN_3 unchanged: the merged token alphabet already persists all manual symbol choices.
+- Verify GUI generation of all 20 combinations of ab!@ at lengths 1..2, plain-password retention, mixed word aliases and resume ignoring edited UI choices.
+
 # 0.1.3
 
 - Retry transient Windows checkpoint replacement errors with bounded exponential backoff; keep the existing committed checkpoint instead of deleting it to bypass a lock.

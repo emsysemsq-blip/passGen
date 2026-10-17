@@ -19,6 +19,7 @@ struct Progress {
  std::atomic<bool> stop{false};
 };
 std::vector<std::string> tokenize(const std::string&, bool words);
+void add_symbols(Config&, const std::string&);
 size_t characters(const std::string&);
 unsigned default_max_length(const Config&);
 Index total(const Config&);

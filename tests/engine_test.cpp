@@ -60,5 +60,21 @@ int main(){fs::path dir=fs::temp_directory_path()/("passgen-test-"+std::to_strin
  for(const auto& text:samples.samples)validSamples&=pg::characters(text)>=14&&pg::characters(text)<=30&&pg::accepts(c,text)&&sampleSet.insert(text).second;
  check(validSamples,"representative samples satisfy final lengths, rules and uniqueness");
  c.tokens={"a","b"};c.upper=true;auto noSamples=pg::preview(c);check(noSamples.samples.empty()&&noSamples.inspected<=4096,"impossible ASCII filter has a bounded empty preview");
+ c={};c.tokens={"a","!"};pg::add_symbols(c,"!!@@!");
+ check(c.tokens==std::vector<std::string>({"a","!","@"}),"custom symbol alphabet merges and deduplicates exact input");
+ check(!c.symbol&&pg::accepts(c,"a"),"custom symbols do not require a symbol in every password");
+ auto beforeEmpty=c.tokens;pg::add_symbols(c,"");check(c.tokens==beforeEmpty,"empty symbol input leaves the alphabet unchanged");
+ c.character_lengths=true;c.max_length=2;pg::Progress symbolOutput;pg::run(c,(dir/"manual-symbols.txt").u8string(),false,symbolOutput);
+ check(symbolOutput.written.load()==12&&read(dir/"manual-symbols.txt").find("aa\n")!=std::string::npos,"optional symbols preserve plain passwords and full combinations");
+ auto beforeInvalid=c.tokens;rejects([&]{pg::add_symbols(c,"! A");},"symbol field rejects letters and whitespace");check(c.tokens==beforeInvalid,"invalid symbols leave the input alphabet untouched");
+ rejects([&]{pg::add_symbols(c,"1");},"digits belong in main input instead of manual symbols");
+ c={};c.tokens={"a"};c.character_lengths=true;pg::add_symbols(c,u8"€؟€");pg::Progress unicodeSymbols;pg::run(c,(dir/"unicode-symbols.txt").u8string(),false,unicodeSymbols);
+ check(read(dir/"unicode-symbols.txt")==u8"a\n€\n؟\n","manual Unicode symbols are exact characters without a mandatory-symbol filter");
+ c={};c.tokens={"a"};pg::add_symbols(c,"!@");c.max_length=3;pg::Progress saveSymbols;saveSymbols.stop=true;pg::run(c,(dir/"symbols-resume.txt").u8string(),false,saveSymbols);
+ bool restoredAlphabet=false;pg::Progress resumeSymbols;pg::run({},(dir/"symbols-resume.txt").u8string(),true,resumeSymbols,[&](const pg::Config& saved){restoredAlphabet=saved.tokens==std::vector<std::string>({"a","!","@"})&&!saved.symbol;});
+ check(restoredAlphabet&&resumeSymbols.written.load()==39,"checkpoint preserves optional manual-symbol alphabet");
+ c={};c.tokens={"a","!"};c.max_length=2;c.symbol=true;pg::Progress oldSymbol;oldSymbol.stop=true;pg::run(c,(dir/"legacy-symbol.txt").u8string(),false,oldSymbol);
+ pg::Progress oldResume;pg::run({},(dir/"legacy-symbol.txt").u8string(),true,oldResume);
+ check(read(dir/"legacy-symbol.txt")=="!\na!\n!a\n!!\n","legacy checkpoints retain their original required-ASCII-symbol rule");
  fs::remove_all(dir);std::cout<<"PASS: "<<checks<<" checks\n";return 0;
  }catch(const std::exception& e){std::cerr<<"FAIL after "<<checks<<" checks: "<<e.what()<<" | artifacts "<<dir<<"\n";return 1;}}

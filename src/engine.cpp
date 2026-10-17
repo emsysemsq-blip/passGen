@@ -77,6 +77,21 @@ std::vector<std::string> tokenize(const std::string& text,bool words){
  }
  return out;
 }
+static std::vector<std::string> parseSymbols(const std::string& text){
+ auto symbols=tokenize(text,false);
+ for(const auto& token:symbols){
+  uint32_t cp=(unsigned char)token[0];
+  if(token.size()>1){cp&=token.size()==2?0x1f:token.size()==3?0x0f:0x07;for(size_t i=1;i<token.size();++i)cp=(cp<<6)|((unsigned char)token[i]&0x3f);}
+  bool asciiLetterOrDigit=(cp>='a'&&cp<='z')||(cp>='A'&&cp<='Z')||(cp>='0'&&cp<='9');
+  bool whitespace=cp<=32||(cp>=0x7f&&cp<=0xa0)||cp==0x1680||(cp>=0x2000&&cp<=0x200a)||cp==0x2028||cp==0x2029||cp==0x202f||cp==0x205f||cp==0x3000;
+  require(!asciiLetterOrDigit&&!whitespace,"Enter literal symbols together, e.g. !@#; no ASCII letters, digits, spaces or control characters");
+ }
+ return symbols;
+}
+void add_symbols(Config& c,const std::string& text){
+ auto selected=parseSymbols(text);if(selected.empty())return;std::unordered_set<std::string> existing(c.tokens.begin(),c.tokens.end());
+ for(const auto& token:selected){if(existing.insert(token).second)c.tokens.push_back(token);}
+}
 Index total(const Config& c){
  require(c.tokens.size()<=100000,"Too many input tokens (maximum 100000)");
  require(!c.tokens.empty(),"Enter at least one character or word");
