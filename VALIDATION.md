@@ -1,51 +1,45 @@
-# PassGen 0.1.0 — validation
+# PassGen 0.1.1 — validation
 
-Validated in the current Debian 13 amd64 cloud environment. Native Windows 10/11 execution is **not** verified. No release has been uploaded to GitHub.
-
-## Results
+This release fixes the reported `Search space exceeds 64-bit indexing` error.
+Validated in Debian 13 amd64 and Wine 10 with Xvfb. Native Windows 10/11 execution remains unverified.
 
 | Check | Result |
 |---|---|
-| Linux C++17 engine suite | 29 checks passed |
-| AddressSanitizer + UndefinedBehaviorSanitizer engine suite | 29 checks passed; no sanitizer findings |
-| Windows x64 engine executable under Wine 10 | 29 checks passed |
-| Win32 GUI smoke under Wine + Xvfb | Passed preview, exact Unicode output, completed resume, stop, resume, exact 2,097,150-line result and clean close |
-| Linux CLI default input `ab` | Exactly `a`, `b`, `aa`, `ab`, `ba`, `bb` |
-| Linux CLI one-million-candidate run | Exactly 1,000,000 ordered six-digit lines, 7,000,000 bytes; every line independently checked |
-| Windows CLI under Wine | Passed Unicode arguments, Unicode output path and exact content |
-| Windows imports | Only Windows system DLLs; C++/thread runtime linked statically |
-| Cloud setup script | Executed successfully; Linux tests and Windows cross-compilation succeeded |
-| Native Windows PowerShell build and physical Windows UI | Unrun |
-| Billion-candidate benchmark, GPU, power-loss testing | Unrun / GPU not implemented |
+| Linux engine suite | 36 checks passed |
+| AddressSanitizer + UndefinedBehaviorSanitizer | 36 checks passed; no findings |
+| Windows x64 engine suite under Wine | 36 checks passed |
+| GUI integration under Wine | Passed exact default-alphabet large count, Unicode output, stop, resume, exact 2,097,150-line output and clean close |
+| C++ rank arithmetic against independent Python big integers | 1,021 cases passed, including 64-bit boundaries and values up to 2,199 bits |
+| CLI large-space generation/resume on Linux and Windows EXE under Wine | Exact last three candidates of spaces ending at 2^64, 2^65, 2^128; checkpoint positions retained without narrowing; completed resume idempotent |
+| Legacy checkpoint migration on both CLI targets | PASSGEN_1 read correctly, remaining line generated, checkpoint upgraded to PASSGEN_2 |
 
-The engine suite covers character deduplication, indexed count/order, deterministic parallel output, adjacent-token filtering, Unicode paths/content, word concatenation, all ASCII class rules, prefix rules, initial and nonempty checkpoint recovery, removal of uncommitted tails, idempotent completed resume, overwrite refusal, corrupt checkpoints, modified/truncated output, index overflow and invalid Unicode.
+The regression tests use controlled checkpoint positions near the end of each large space. They exercise actual generation, file output, large-rank serialization and resume, without claiming to enumerate those entire spaces. Direct tests also verify the candidate at rank 2^64 and startup/stop of a new job with 2^128 candidates.
 
-The one-million-candidate Linux CLI smoke measured about 0.052 s wall time and 8,576 KiB maximum resident memory for that process in this environment. It used four workers, tiny six-byte candidates, warm binaries and the cloud filesystem. This is **not** a Windows throughput guarantee, sustained physical-disk benchmark or comparison with specialist tools. Durability calls were enabled. Longer tokens, filters, worker counts and storage latency change throughput.
+Existing checks continue to cover exact order/count, word and Unicode input, ASCII rules, parallel output determinism, corruption/truncation detection and recovery from uncommitted output tails. Candidate positions and search-space totals are arbitrary-precision; actual output byte offsets remain limited by the operating system and storage.
 
 ## Reproduce
 
 ```sh
 bash scripts/build-linux.sh
-PATH=/workspace/toolchain/root/usr/bin:$PATH \
-CXX_WINDOWS=/workspace/toolchain/root/usr/bin/x86_64-w64-mingw32-g++-posix \
-bash scripts/build-windows.sh
+python3 tests/large_space_test.py ./build/passgen-cli
+
+g++ -std=c++17 -O2 -Isrc tests/index_oracle.cpp -o build/index-oracle
+python3 tests/index_oracle_test.py ./build/index-oracle
 
 g++ -std=c++17 -O1 -g -fsanitize=address,undefined \
   -fno-omit-frame-pointer -pthread -Isrc \
   src/engine.cpp tests/engine_test.cpp -o build/passgen-tests-asan
 ./build/passgen-tests-asan
+
+PATH=/workspace/toolchain/root/usr/bin:$PATH \
+CXX_WINDOWS=/workspace/toolchain/root/usr/bin/x86_64-w64-mingw32-g++-posix \
+bash scripts/build-windows.sh
 ```
 
-On Windows, from `dist`, run `passgen-tests.exe` and `passgen-gui-smoke.exe` (the latter opens the application and creates temporary output). The GUI test checks actual controls and resulting files, rather than just whether a window opens. To retain the window briefly for a screenshot, pass any argument to the smoke test.
-
-Optional Linux compatibility check with an initialized Wine installation and display:
+With an initialized Wine and display, run `passgen-tests.exe` and `passgen-gui-smoke.exe` from `dist`. The CLI regression also accepts a Windows loader:
 
 ```sh
-cd dist
-wine passgen-tests.exe
-wine passgen-gui-smoke.exe
+python3 tests/large_space_test.py --windows /path/to/wine64 ./dist/passgen-cli.exe
 ```
 
-For this sandbox, Debian Wine packages were extracted outside the repository. Relocated Wine needed its server/data paths corrected and its packaged `zlib1.dll` available in the test prefix. A fresh prefix then ran the engine and GUI tests. Earlier failures were Wine bootstrap failures, not passing application checks. A nonfatal Wine bootstrap warning about the unavailable 32-bit `rundll32.exe` occurred; the selected 64-bit engine suite completed with exit status 0. These Wine dependencies are optional and are not bundled with the Windows application.
-
-The screenshot is captured from the running GUI in Wine/Xvfb, not a mockup. It shows a completed resumed job and a preview for a new input.
+No native Windows throughput, full billion-candidate run or power-loss test was performed for this release. Accepting a very large finite search space does not make its full output practical to generate or store. No external big-integer library/runtime is needed.
