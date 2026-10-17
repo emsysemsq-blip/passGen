@@ -2,7 +2,11 @@
 
 Date: 2026-10-17. Status: investigation incomplete; no antivirus clearance is claimed.
 
-The reported warning cannot yet be attributed to a specific detection. The antivirus product, exact threat name, and triggering stage (download, extraction, execution, or generation) have not been supplied. The user entered version0.1.18; the published release examined here is0.1.8, so the precise file also needs confirmation.
+## Confirmed endpoint report
+
+The supplied Windows Security screenshot confirms Microsoft Defender detected `Trojan:Win32/Sabsik.FL.A!ml`, severity Severe, status Removed, against `PassGen-v0.1.8-win64.exe` in Downloads. The displayed download origin points to this repository's `release/passgen-v0.1.8` artifact. The filename resolves the earlier version ambiguity to v0.1.8. The local downloaded file's hash has not been provided; the screenshot confirms the name/origin, not byte identity.
+
+This is a malware detection, not a SmartScreen unknown-publisher prompt or a HackTool/PUA label. The `!ml` suffix indicates a machine-learning-based label; it does not establish that the result is a false positive. The generic family description in the UI is not a detailed trace of this program's observed behavior. Detection timing (download versus first execution) and Defender engine/security-intelligence versions remain unknown.
 
 ## Exact file examined
 
@@ -34,22 +38,32 @@ Direct DLL imports are COMCTL32.dll, comdlg32.dll, GDI32.dll, KERNEL32.dll, msvc
 
 Some sensitive-looking imports originate from the static MinGW runtime rather than explicit application behavior. Symbol references in the verified `libwinpthread.a` identify GetThreadContext/SetThreadContext/SuspendThread/ResumeThread/IsDebuggerPresent in its thread implementation, OpenProcess in scheduling support, and SetSystemTime in clock support. Their presence is not by itself evidence of malware and does not prove what caused a particular engine's detection.
 
-The application was built without a packer or obfuscator. Static C++/thread runtime linking and lack of signing may affect reputation/heuristic assessment, but neither has been established as the cause here. A wordlist generator may also receive a tool-category classification; that cannot be assessed without the exact detection name.
+The application was built without a packer or obfuscator. Static C++/thread runtime linking and lack of signing may affect reputation/heuristic assessment, but neither has been established as the cause here. The supplied label is a Trojan finding, so the confirmed report must not be reclassified as a harmless wordlist-tool warning.
 
 ## Antivirus scan limitation
 
 Installed ClamAV1.4.3 locally from normal checksum-verified Debian packages for an independent local scan. Freshclam could not retrieve its official signature database: the configured network proxy denied the official database host (`database.clamav.net`, HTTP403CONNECT). No valid signature database was available, so a meaningful ClamAV scan was NOT completed. There is no clean-scan result. No executable or source was uploaded to a third-party scanner, and the user's endpoint antivirus was not accessible from this environment.
 
-## Next evidence needed
+## Remaining investigation and vendor review
 
-Confirm the exact downloaded filename and compare its SHA256 above. On Windows the read-only commands below show identity and signing status:
+The endpoint product, threat name and release filename are now known. Remaining useful metadata are Defender engine/platform/security-intelligence versions, detection timing and any hash already recorded by the endpoint. Do not restore a removed executable merely to compute its hash. If a copy is already safely retained for analysis, its SHA256 can be compared with the published value above.
+
+The following Windows commands query status/history without restoring files, adding exclusions, disabling protection, scanning or uploading anything:
 
 ```powershell
-Get-FileHash -LiteralPath '.\PassGen-v0.1.8-win64.exe' -Algorithm SHA256
-Get-AuthenticodeSignature -LiteralPath '.\PassGen-v0.1.8-win64.exe' |
-    Select-Object Status, StatusMessage, SignerCertificate
+Get-MpComputerStatus |
+    Select-Object AMProductVersion, AMEngineVersion,
+                  AntivirusSignatureVersion, AntivirusSignatureLastUpdated
+Get-MpThreatDetection |
+    Where-Object { ($_.Resources -join ' ') -match 'PassGen-v0\.1\.8-win64\.exe' } |
+    Select-Object InitialDetectionTime, LastThreatStatusChangeTime,
+                  ThreatID, ActionSuccess, Resources
 ```
 
-Provide the antivirus product and exact threat label. If the local hash differs, the file has not yet been matched to this investigated artifact. If the label is a malware finding, retain the vendor report for analysis; if it is a publisher/reputation or tool-category warning, address that specific classification through the vendor's review process. Any external file submission requires the user's authorization.
+These commands were not executed in this Linux environment. History may include local paths; inspect it before sharing.
 
-The warning has not been reproduced or resolved. This audit does not recommend disabling protection or creating an exclusion, and it does not replace the flagged executable with a changed hash to evade detection.
+The appropriate external next step is Microsoft's official developer file-review process for the exact original artifact and hash: https://www.microsoft.com/en-us/wdsi/filesubmission . Select the software-developer scenario and report the observed detection without asserting a confirmed false positive. Include the release/source URL, hash, this source-to-binary comparison and the application purpose. Any actual external file submission requires authorization; none has been made from this environment. Native Defender scanning and the user's endpoint were not available here.
+
+Keep the removed artifact blocked while the finding is unresolved. Obtain a Microsoft review verdict and retest against current security intelligence before representing the issue as resolved. An Authenticode signature can establish publisher identity but is not a malware-clearance verdict.
+
+The endpoint warning is confirmed by the screenshot; its cause and validity remain unresolved. This audit does not recommend disabling protection or creating an exclusion, and it does not replace the flagged executable with a changed hash to evade detection.
