@@ -1,3 +1,17 @@
+# v0.1.7 validation
+
+- Linux engine suite: 62 checks passed; same 62 checks passed with AddressSanitizer and UndefinedBehaviorSanitizer.
+- Windows x64 binaries cross-compiled; Windows engine suite passed 62 checks under Wine. Windows GUI integration and real temporary/persistent checkpoint-lock recovery tests passed under Wine.
+- New range regression: 38 exact comparisons against v0.1.6 across Unicode, aliases, rules, affixes, scalar/token lengths and worker counts. Also checks singleton lengths 1..128, 1,048,574-line worker/length boundaries, independently checksummed v3 tails at 2^64/65/128 and completed resume.
+- Existing CLI suites passed: 16 word/rule cases and crash replay, exact unique 64,512-row length range 10..15, six extra-input oracles, huge-rank and legacy-checkpoint upgrade tests.
+- Performance measurements: all 60 short-workload and 12 larger-workload files matched across versions by SHA256, byte count and line count. Larger workload produced 16,777,216 lines / 208 MiB per run; four-worker median fell from 2.1727 s to 0.1638 s (13.26x). See BENCHMARKS.md and benchmarks/v0.1.7 for scope and raw measurements.
+- Performance tests used native Linux CLI with four-core quota and cloud overlay storage. GPU was not exposed; GPU execution is not implemented. These are not native Windows or physical SSD results; billion-line sustained throughput is unverified.
+- Worker output buffers are bounded at about 4 MiB each; exact canonical deduplication, raw candidate rank order and durable output-before-checkpoint commit order remain enabled. Stop waits for the current bounded batch; a crash replays uncommitted data from the last checkpoint.
+- GUI rates use starting rank/bytes loaded from the checkpoint and actual completion duration; status includes MiB/sec. Completed Resume does not count earlier work as new throughput.
+- No checkpoint schema or runtime dependency change. Native Windows 10/11 and user-system performance remain unverified.
+
+Historical validation follows.
+
 # v0.1.6 validation
 
 - Linux engine: 62 checks passed; Windows engine under Wine: 62 checks passed.

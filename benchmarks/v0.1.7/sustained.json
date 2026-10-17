@@ -1,0 +1,231 @@
+{
+  "created_utc": "2026-10-17T08:20:08.888007+00:00",
+  "machine": {
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "logical_cpus": 5,
+    "affinity_cpus": 5,
+    "/sys/fs/cgroup/cpu.max": "400000 100000",
+    "cpu_quota_cores": 4.0,
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor"
+  },
+  "timing_scope": "Fresh CLI process through exit, durable file and checkpoints; output inspection excluded",
+  "cases": [
+    {
+      "name": "ascii_four_12_sustained",
+      "args": [
+        "--chars",
+        "abcd",
+        "--min",
+        "12",
+        "--max",
+        "12"
+      ],
+      "expected_lines": 16777216
+    }
+  ],
+  "baseline": {
+    "executable": "/workspace/passGen/build/perf/passgen-v0.1.6-cli",
+    "executable_sha256": "d5739445b08ff0f40bbef4d3967e7da95f2e347921bb433034a58a453e8e2e9a",
+    "repeats": 3,
+    "results": [
+      {
+        "case": "ascii_four_12_sustained",
+        "args": [
+          "--chars",
+          "abcd",
+          "--min",
+          "12",
+          "--max",
+          "12"
+        ],
+        "threads": 1,
+        "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+        "lines": 16777216,
+        "bytes": 218103808,
+        "samples": [
+          {
+            "wall_seconds": 7.329814055003226,
+            "cli_seconds": 7.32647,
+            "scanned": 16777216,
+            "lines_per_second": 2288900.628870403,
+            "mib_per_second": 28.37725465327762
+          },
+          {
+            "wall_seconds": 6.768067716999212,
+            "cli_seconds": 6.76526,
+            "scanned": 16777216,
+            "lines_per_second": 2478878.270951844,
+            "mib_per_second": 30.732553026555987
+          },
+          {
+            "wall_seconds": 6.636421943985624,
+            "cli_seconds": 6.63421,
+            "scanned": 16777216,
+            "lines_per_second": 2528051.4321734244,
+            "mib_per_second": 31.342190378431816
+          }
+        ],
+        "median_wall_seconds": 6.768067716999212,
+        "median_cli_seconds": 6.76526,
+        "median_lines_per_second": 2478878.270951844,
+        "median_mib_per_second": 30.732553026555987
+      },
+      {
+        "case": "ascii_four_12_sustained",
+        "args": [
+          "--chars",
+          "abcd",
+          "--min",
+          "12",
+          "--max",
+          "12"
+        ],
+        "threads": 4,
+        "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+        "lines": 16777216,
+        "bytes": 218103808,
+        "samples": [
+          {
+            "wall_seconds": 2.121348991000559,
+            "cli_seconds": 2.11776,
+            "scanned": 16777216,
+            "lines_per_second": 7908748.664729055,
+            "mib_per_second": 98.05081619403622
+          },
+          {
+            "wall_seconds": 2.2690787269966677,
+            "cli_seconds": 2.26668,
+            "scanned": 16777216,
+            "lines_per_second": 7393844.8236241555,
+            "mib_per_second": 91.66715880118754
+          },
+          {
+            "wall_seconds": 2.172734762018081,
+            "cli_seconds": 2.17029,
+            "scanned": 16777216,
+            "lines_per_second": 7721704.597029126,
+            "mib_per_second": 95.73188758981576
+          }
+        ],
+        "median_wall_seconds": 2.172734762018081,
+        "median_cli_seconds": 2.17029,
+        "median_lines_per_second": 7721704.597029126,
+        "median_mib_per_second": 95.73188758981576
+      }
+    ]
+  },
+  "candidate": {
+    "executable": "/workspace/passGen/build/passgen-cli",
+    "executable_sha256": "850c1a6d2fd136cb62ccb4e315e7732d7b67a9056d0e5638d2c19dd8aa1760a3",
+    "repeats": 3,
+    "results": [
+      {
+        "case": "ascii_four_12_sustained",
+        "args": [
+          "--chars",
+          "abcd",
+          "--min",
+          "12",
+          "--max",
+          "12"
+        ],
+        "threads": 1,
+        "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+        "lines": 16777216,
+        "bytes": 218103808,
+        "samples": [
+          {
+            "wall_seconds": 0.34909268299816176,
+            "cli_seconds": 0.346335,
+            "scanned": 16777216,
+            "lines_per_second": 48059489.118791826,
+            "mib_per_second": 595.8303056185663
+          },
+          {
+            "wall_seconds": 0.3962263930006884,
+            "cli_seconds": 0.393692,
+            "scanned": 16777216,
+            "lines_per_second": 42342499.8848344,
+            "mib_per_second": 524.9524102238151
+          },
+          {
+            "wall_seconds": 0.3922747499891557,
+            "cli_seconds": 0.38977,
+            "scanned": 16777216,
+            "lines_per_second": 42769043.891975716,
+            "mib_per_second": 530.2406030613749
+          }
+        ],
+        "median_wall_seconds": 0.3922747499891557,
+        "median_cli_seconds": 0.38977,
+        "median_lines_per_second": 42769043.891975716,
+        "median_mib_per_second": 530.2406030613749
+      },
+      {
+        "case": "ascii_four_12_sustained",
+        "args": [
+          "--chars",
+          "abcd",
+          "--min",
+          "12",
+          "--max",
+          "12"
+        ],
+        "threads": 4,
+        "sha256": "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743",
+        "lines": 16777216,
+        "bytes": 218103808,
+        "samples": [
+          {
+            "wall_seconds": 0.17031233699526638,
+            "cli_seconds": 0.167253,
+            "scanned": 16777216,
+            "lines_per_second": 98508518.50189985,
+            "mib_per_second": 1221.285572552393
+          },
+          {
+            "wall_seconds": 0.1638395159970969,
+            "cli_seconds": 0.160998,
+            "scanned": 16777216,
+            "lines_per_second": 102400302.50270806,
+            "mib_per_second": 1269.5350003578233
+          },
+          {
+            "wall_seconds": 0.15631025299080648,
+            "cli_seconds": 0.153444,
+            "scanned": 16777216,
+            "lines_per_second": 107332792.82061405,
+            "mib_per_second": 1330.686861675246
+          }
+        ],
+        "median_wall_seconds": 0.1638395159970969,
+        "median_cli_seconds": 0.160998,
+        "median_lines_per_second": 102400302.50270806,
+        "median_mib_per_second": 1269.5350003578233
+      }
+    ]
+  },
+  "comparison": [
+    {
+      "case": "ascii_four_12_sustained",
+      "threads": 1,
+      "identical_bytes": true,
+      "wall_speedup": 17.253386095297525,
+      "baseline_median_seconds": 6.768067716999212,
+      "candidate_median_seconds": 0.3922747499891557,
+      "candidate_lines_per_second": 42769043.891975716,
+      "candidate_mib_per_second": 530.2406030613749
+    },
+    {
+      "case": "ascii_four_12_sustained",
+      "threads": 4,
+      "identical_bytes": true,
+      "wall_speedup": 13.261359744596534,
+      "baseline_median_seconds": 2.172734762018081,
+      "candidate_median_seconds": 0.1638395159970969,
+      "candidate_lines_per_second": 102400302.50270806,
+      "candidate_mib_per_second": 1269.5350003578233
+    }
+  ]
+}

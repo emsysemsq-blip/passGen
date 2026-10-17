@@ -6,6 +6,9 @@
 #include <filesystem>
 #include <fstream>
 #include <future>
+#include <condition_variable>
+#include <deque>
+#include <mutex>
 #include <iomanip>
 #include <limits>
 #include <sstream>
@@ -175,6 +178,7 @@ Preview preview(const Config& c,size_t maximum){
 }
 bool accepts(const Config& c,const std::string& s){
  if(s.empty())return false;
+ if(!(c.lower||c.upper||c.digit||c.symbol))return true;
  bool lo=false,up=false,di=false,sy=false;
  for(unsigned char v:s){lo|=v>='a'&&v<='z';up|=v>='A'&&v<='Z';di|=v>='0'&&v<='9';sy|=v>=33&&v<=126&&!((v>='a'&&v<='z')||(v>='A'&&v<='Z')||(v>='0'&&v<='9'));}
  return (!c.lower||lo)&&(!c.upper||up)&&(!c.digit||di)&&(!c.symbol||sy);
@@ -284,6 +288,65 @@ static State load(const fs::path& p){
  require(magic=="PASSGEN_3"||!unique.needsCanonicalization(),"This older word checkpoint may contain duplicates. Start a new output with PassGen 0.1.2");
  return s;
 }
+// A run owns its workers; no thread creation per output block.
+class Workers {
+ std::mutex mutex;std::condition_variable ready;bool quitting=false;
+ std::deque<std::function<void()>> jobs;std::vector<std::thread> threads;
+ void close(){ {std::lock_guard<std::mutex> lock(mutex);quitting=true;}ready.notify_all();for(auto& thread:threads)if(thread.joinable())thread.join(); }
+public:
+ explicit Workers(unsigned count){try{for(unsigned i=0;i<count;++i)threads.emplace_back([this]{for(;;){std::function<void()> job;{std::unique_lock<std::mutex> lock(mutex);ready.wait(lock,[&]{return quitting||!jobs.empty();});if(jobs.empty())return;job=std::move(jobs.front());jobs.pop_front();}job();}});}catch(...){close();throw;}}
+ ~Workers(){close();}
+ template<class F>auto submit(F task){using T=decltype(task());auto work=std::make_shared<std::packaged_task<T()>>(std::move(task));auto result=work->get_future();{std::lock_guard<std::mutex> lock(mutex);jobs.emplace_back([work]{(*work)();});}ready.notify_one();return result;}
+};
+static unsigned classes(const std::string& text){
+ unsigned mask=0;for(unsigned char ch:text){if(ch>='a'&&ch<='z')mask|=1;else if(ch>='A'&&ch<='Z')mask|=2;else if(ch>='0'&&ch<='9')mask|=4;else if(ch>=33&&ch<=126)mask|=8;}return mask;
+}
+// Metadata shared by workers; the odometer updates only the changed suffix.
+struct Alphabet {
+ std::vector<unsigned> masks;std::vector<size_t> chars;
+ unsigned required,affixMask;size_t affixChars,width;bool fixed;
+ explicit Alphabet(const Config& c):required(unsigned(c.lower)|(unsigned(c.upper)<<1)|(unsigned(c.digit)<<2)|(unsigned(c.symbol)<<3)),affixMask(classes(c.prefix)|classes(c.suffix)),affixChars(c.character_lengths?characters(c.prefix)+characters(c.suffix):0),width(c.tokens.front().size()),fixed(true){
+  for(const auto& token:c.tokens){masks.push_back(classes(token));chars.push_back(c.character_lengths?characters(token):0);fixed&=token.size()==width;}
+ }
+};
+static std::pair<std::string,uint64_t> generateRange(const Config& c,Index begin,uint64_t span,const UniqueOutputs& unique,const Plan& plan,const Alphabet& alphabet,size_t maxLine){
+ std::string text;text.reserve(size_t(span)*maxLine);uint64_t lines=0;const size_t radix=c.tokens.size();
+ while(span){
+  Index rank=begin;const Segment* segment=nullptr;
+  for(const auto& part:plan.segments){if(rank<part.count){segment=&part;break;}rank-=part.count;}
+  require(segment!=nullptr,"Candidate index out of range");
+  Index power=1;unsigned length=0;
+  for(unsigned n=1;n<=segment->tokens.maximum;++n){power*=uint32_t(radix);if(n<segment->tokens.minimum)continue;if(rank<power){length=n;break;}rank-=power;}
+  require(length!=0,"Candidate index out of range");
+  Index available=power-rank;uint64_t amount=available<Index(span)?available.u64():span;
+  std::array<size_t,128> digits{};
+  if(rank.fits64()){uint64_t value=rank.u64();for(unsigned i=length;i>0;--i){digits[i-1]=value%radix;value/=radix;}}
+  else for(unsigned i=length;i>0;--i)digits[i-1]=rank.divide(uint32_t(radix));
+  unsigned counts[4]={};size_t charCount=alphabet.affixChars;unsigned adjacent=0;
+  auto account=[&](size_t token,int delta){if(c.character_lengths)charCount+=delta*alphabet.chars[token];if(alphabet.required)for(unsigned bit=0;bit<4;++bit)if(alphabet.masks[token]&(1u<<bit))counts[bit]+=delta;};
+  std::string line=c.prefix;for(unsigned i=0;i<length;++i){account(digits[i],1);if(c.no_repeat&&i&&digits[i]==digits[i-1])++adjacent;if(alphabet.fixed)line+=c.tokens[digits[i]];}
+  if(alphabet.fixed){line+=c.suffix;line+='\n';}
+  for(uint64_t n=0;n<amount;++n){
+   bool valid=(!c.no_repeat||adjacent==0)&&(!c.character_lengths||charCount==segment->final_chars);
+   if(valid&&alphabet.required)for(unsigned bit=0;bit<4;++bit)if((alphabet.required&(1u<<bit))&&!(alphabet.affixMask&(1u<<bit))&&!counts[bit]){valid=false;break;}
+   if(valid){
+    if(alphabet.fixed&&!unique.needsCanonicalization())text+=line;
+    else {std::string body;for(unsigned i=0;i<length;++i)body+=c.tokens[digits[i]];if(unique.canonical(body,digits.data(),length)){text+=c.prefix;text+=body;text+=c.suffix;text+='\n';}else valid=false;}
+    if(valid)++lines;
+   }
+   if(n+1==amount)break;
+   for(unsigned i=length;i>0;){--i;size_t old=digits[i],next=old+1==radix?0:old+1;
+    if(c.no_repeat){if(i&&digits[i-1]==old)--adjacent;if(i+1<length&&digits[i+1]==old)--adjacent;}
+    account(old,-1);digits[i]=next;account(next,1);
+    if(c.no_repeat){if(i&&digits[i-1]==next)++adjacent;if(i+1<length&&digits[i+1]==next)++adjacent;}
+    if(alphabet.fixed)std::memcpy(&line[c.prefix.size()+i*alphabet.width],c.tokens[next].data(),alphabet.width);
+    if(next)break;
+   }
+  }
+  begin+=amount;span-=amount;
+ }
+ return {std::move(text),lines};
+}
 void run(Config c,const std::string& output,bool resume,Progress& progress,const std::function<void(const Config&)>& loaded){
  auto out=fs::absolute(path(output));auto cp=out;cp+=".pgstate";State s;
  if(resume){s=load(cp);c=s.c;}else {std::unordered_set<std::string> seen;c.tokens.erase(std::remove_if(c.tokens.begin(),c.tokens.end(),[&](const auto& t){return !seen.insert(t).second;}),c.tokens.end());total(c);require(!fs::exists(cp),"Checkpoint already exists; select another output or resume");s.c=c;}
@@ -291,13 +354,15 @@ void run(Config c,const std::string& output,bool resume,Progress& progress,const
  if(resume){require(file.size()>=s.offset,"Output is shorter than checkpoint");require(hash(file.tail(s.offset))==s.tailhash,"Output tail changed; resume refused");file.truncate(s.offset);file.flush();}
  else {file.flush();save(cp,s);}
  progress.total=count;progress.scanned=s.next;progress.written=s.lines;progress.bytes=s.offset;if(loaded)loaded(c);
- // Each worker holds at most about 1 MiB of generated text. Ordered batches keep output deterministic.
+ // Bounded 4 MiB worker buffers, persistent workers, and identical rank order.
  size_t maxToken=1;for(auto& t:c.tokens)maxToken=std::max(maxToken,t.size());size_t maxLine=maxToken*c.max_length+c.prefix.size()+c.suffix.size()+1;
- uint64_t chunk=std::max<size_t>(1,std::min<size_t>(8192,(1024*1024)/maxLine));
+ uint64_t chunk=std::max<size_t>(1,std::min<size_t>(unique.needsCanonicalization()?8192:262144,(4*1024*1024)/maxLine));
+ if(s.next==count||progress.stop)return;
+ Alphabet alphabet(c);Workers workers(c.threads);
  while(s.next<count&&!progress.stop){
   std::vector<std::future<std::pair<std::string,uint64_t>>> tasks;Index end=s.next;
-  for(unsigned w=0;w<c.threads&&end<count;++w){Index begin=end;auto remaining=count-end;uint64_t span=remaining<Index(chunk)?remaining.u64():chunk;end+=span;Index finish=end;
-   tasks.push_back(std::async(std::launch::async,[&,begin,finish,span]{std::string text;text.reserve(std::min<uint64_t>(1024*1024,span*maxLine));uint64_t lines=0;for(Index i=begin;i<finish;++i){auto s=generate(c,i,unique,plan);if(accepts(c,s)){text+=s;text+='\n';++lines;}}return std::make_pair(std::move(text),lines);}));}
+  for(unsigned w=0;w<c.threads&&end<count;++w){Index begin=end;auto remaining=count-end;uint64_t span=remaining<Index(chunk)?remaining.u64():chunk;end+=span;
+   tasks.push_back(workers.submit([&,begin,span]{return generateRange(c,begin,span,unique,plan,alphabet,maxLine);}));}
   State next=s;for(auto& task:tasks){auto part=task.get();require(next.offset<=uint64_t(INT64_MAX)-part.first.size(),"Output exceeds supported file size");file.write(part.first);next.offset+=part.first.size();next.lines+=part.second;}
   file.flush();next.next=end;next.tailhash=hash(file.tail(next.offset));save(cp,next);s=std::move(next);
   progress.scanned=s.next;progress.written=s.lines;progress.bytes=s.offset;

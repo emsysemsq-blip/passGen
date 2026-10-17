@@ -1,3 +1,13 @@
+# 0.1.7
+
+- Unrank once per bounded range and increment token digits; eliminate per-candidate arbitrary-precision division and segment/power reconstruction.
+- Reuse worker threads for the whole run. Use bounded 4 MiB worker output buffers (smaller candidate spans for ambiguous tokens) to reduce durable commit overhead.
+- Reuse fixed-byte-width line templates and update only changed tokens; precompute ASCII class masks and update length/rule state incrementally.
+- Preserve exact canonical word/emoji deduplication, raw rank order, legacy checkpoint schemas and output-before-checkpoint durability.
+- Wake CLI signal watcher immediately on completion; retain SIGINT stop handling. Correct GUI initial/resumed rate baselines and show MiB/sec with actual completion timing.
+- Add exact baseline range regressions and repeatable end-to-end benchmarks with verified byte-identical files. See BENCHMARKS.md for machine, timing scope and limits.
+- GPU execution remains unimplemented; these optimizations use CPU and bounded RAM.
+
 # 0.1.6
 
 - Correct Shift + letter to Windows Persian (00000429) instead of ASCII uppercase, following the user's clarification.
