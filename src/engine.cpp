@@ -104,8 +104,18 @@ void add_emojis(Config& c,const std::string& text){
 }
 void add_persian(Config& c){mergeTokens(c,tokenize(u8"ابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیآ",false));}
 void add_shift_letters(Config& c){
+ // Windows Persian (00000429), Unicode CLDR release-32 Windows keyboard table.
+ // Only Persian letter keys are mapped; preserve all other scalar values.
+ static const std::pair<std::string,std::string> mapping[]={{u8"ض",u8"ً"},{u8"ص",u8"ٌ"},{u8"ث",u8"ٍ"},{u8"ق",u8"ريال"},{u8"ف",u8"،"},{u8"غ",u8"؛"},{u8"ع",u8","},{u8"ه",u8"]"},{u8"خ",u8"["},{u8"ح",u8"\\"},{u8"ج",u8"}"},{u8"چ",u8"{"},{u8"ش",u8"َ"},{u8"س",u8"ُ"},{u8"ی",u8"ِ"},{u8"ب",u8"ّ"},{u8"ل",u8"ۀ"},{u8"ا",u8"آ"},{u8"ت",u8"ـ"},{u8"ن",u8"«"},{u8"م",u8"»"},{u8"ک",u8":"},{u8"گ",u8"\""},{u8"پ",u8"|"},{u8"ظ",u8"ة"},{u8"ط",u8"ي"},{u8"ز",u8"ژ"},{u8"ر",u8"ؤ"},{u8"ذ",u8"إ"},{u8"د",u8"أ"},{u8"ئ",u8"ء"},{u8"و",u8"<"}};
  auto original=c.tokens;std::vector<std::string> selected;
- for(auto token:original){bool changed=false;for(char& ch:token)if(ch>='a'&&ch<='z'){ch=char(ch-'a'+'A');changed=true;}if(changed)selected.push_back(std::move(token));}
+ for(const auto& token:original){
+  std::string shifted;bool changed=false;
+  for(size_t i=0;i<token.size();){size_t width=scalarWidth(token,i);auto scalar=token.substr(i,width);i+=width;bool found=false;
+   for(const auto& entry:mapping)if(entry.first==scalar){shifted+=entry.second;changed=true;found=true;break;}
+   if(!found)shifted+=scalar;
+  }
+  if(changed)selected.push_back(std::move(shifted));
+ }
  mergeTokens(c,selected);
 }
 Index total(const Config& c){

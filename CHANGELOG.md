@@ -1,3 +1,11 @@
+# 0.1.6
+
+- Correct Shift + letter to Windows Persian (00000429) instead of ASCII uppercase, following the user's clarification.
+- Apply explicit CLDR Windows Persian letter-key mappings, preserving combining marks and multi-scalar ريال output; leave non-Persian-letter input unchanged.
+- Word mode adds the fully shifted word; existing letters and exact mandatory deduplication remain intact.
+- Store the Unicode CLDR reference fixture and license for independent all-key oracle tests. Source: https://raw.githubusercontent.com/unicode-org/cldr/release-32/keyboards/windows/fa-t-k0-windows.xml
+- Existing checkpoints retain their original stored alphabet; use a new output for the corrected Shift option.
+
 # 0.1.5
 
 - Add separate manual Emoji input and CLI --emojis with whitespace-delimited complete tokens, preserving ZWJ, flag and modifier sequences.

@@ -15,7 +15,8 @@ static std::string read(const fs::path& p){std::ifstream f(p,std::ios::binary);r
 static void append(const fs::path& p,const std::string& text){std::ofstream f(p,std::ios::app|std::ios::binary);f<<text;}
 int main(){fs::path dir=fs::temp_directory_path()/("passgen-test-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));fs::create_directories(dir);try{
  pg::Config extras;extras.tokens={"a","A"};pg::add_shift_letters(extras);check(extras.tokens.size()==2,"shift alphabet stays unique");
- extras.tokens={"ab",u8"بa"};pg::add_shift_letters(extras);check(extras.tokens==std::vector<std::string>({"ab",u8"بa","AB",u8"بA"}),"shift adds uppercase words without changing Persian");
+ extras.tokens={"ab",u8"بa"};pg::add_shift_letters(extras);check(extras.tokens==std::vector<std::string>({"ab",u8"بa",u8"ّa"}),"Persian Shift leaves English unchanged and maps Persian in words");
+ extras.tokens={u8"ش",u8"ی",u8"ا",u8"ق",u8"ل",u8"پ",u8"ئ",u8"😀"};pg::add_shift_letters(extras);check(extras.tokens==std::vector<std::string>({u8"ش",u8"ی",u8"ا",u8"ق",u8"ل",u8"پ",u8"ئ",u8"😀",u8"َ",u8"ِ",u8"آ",u8"ريال",u8"ۀ","|",u8"ء"}),"Windows Persian Shift marks letters multi-scalar text and unchanged emoji");
  extras.tokens={u8"ی"};pg::add_persian(extras);check(extras.tokens.size()==33,"Persian preset has 32 letters plus alef madda without duplicates");
  extras={};pg::add_emojis(extras,u8"👩‍💻 👍🏽 🇮🇷 👩‍💻");check(extras.tokens==std::vector<std::string>({u8"👩‍💻",u8"👍🏽",u8"🇮🇷"}),"manual emoji preserves sequences and deduplicates entries");
  extras.max_length=2;extras.threads=2;pg::Progress ep;pg::run(extras,(dir/"emoji.txt").u8string(),false,ep);check(ep.written==12&&read(dir/"emoji.txt").find(u8"👩‍💻👍🏽\n")!=std::string::npos,"complete emoji combinations stay intact");
