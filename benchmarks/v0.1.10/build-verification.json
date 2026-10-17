@@ -1,0 +1,27 @@
+{
+  "PassGen.exe": {
+    "sha256": "71edd6cdf4d097c2b827c8ca3431da1844266d126906cc7caa52c3f8f016a84a",
+    "size": 3288188,
+    "rebuild_byte_identical": true,
+    "pe": {
+      "machine": "AMD64",
+      "link_timestamp": 0,
+      "authenticode_certificate_present": false,
+      "asInvoker_manifest": true,
+      "version": "0.1.10.0"
+    }
+  },
+  "passgen-cli.exe": {
+    "sha256": "db20ac96d1dd2f11f3480d005a6aa4c4d01ec8808a75c9a25c5fb4570740cd84",
+    "size": 3259804,
+    "rebuild_byte_identical": true,
+    "pe": {
+      "machine": "AMD64",
+      "link_timestamp": 0,
+      "authenticode_certificate_present": false
+    }
+  },
+  "compiler": "x86_64-w64-mingw32-g++-posix (GCC) 14-posix",
+  "physical_gpu_tested": false,
+  "opencl_correctness_runtime": "PoCL 6 CPU device via explicit test hook; production GPU discovery excludes CPU devices"
+}

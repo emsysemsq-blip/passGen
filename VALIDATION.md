@@ -1,3 +1,21 @@
+# v0.1.10 validation
+
+- Native Linux: 62 engine checks and 267 resource-engine checks passed. Resource discovery/planning and checkpoint retry suites passed. The latest one-core pacing fixture measured 25.56% and 69.69% process CPU/wall for 25% and 70% targets; these are approximate worker-generation controls.
+- Real OpenCL execution: 76 backend/discovery checks and 70 integrated engine checks passed on PoCL 6 / LLVM 18, using the explicit CPU-device test hook. Production discovery excludes CPU OpenCL devices. No physical GPU was available; these results do not measure GPU speed or RTX 4090 compatibility.
+- Integrated oracles cover ordered CPU parity, ASCII requirements, affixes, Persian and emoji UTF-8, mandatory deduplication, unsupported-input fallback, transfer-inclusive Auto calibration, exact filtered disk-quota boundaries, nonempty Stop/Resume, crash-tail replay, a failed GPU batch replayed by CPU, and final ranks ending at 2^128.
+- AddressSanitizer/UndefinedBehaviorSanitizer passed all 76 backend and 70 integration checks without suppressions or preload. Repeated discovery (100 iterations) and OpenCL create/generate/destroy (10 iterations) also passed. The OpenCL loader is cached once per process; per-job queues, events, buffers, kernel, program and context are released. This avoids stranding the ICD loader's process-global vendor tables on repeated unloading. Installing or changing a driver requires restarting the application.
+- Review corrected calibration CPU-buffer sizing and reserved the GPU aggregate once to avoid transient string growth beyond its assigned buffer budget. Stopping during calibration does not report a false output mismatch or commit probe output.
+- Windows x64 GUI, CLI and test executables cross-compiled. Under Wine, engine 62 and resource-engine 267 checks passed, as did actual GUI generation/Stop/Resume and temporary/persistent checkpoint-lock recovery. Windows GPU tests explicitly skipped real-kernel execution because no usable OpenCL GPU was exposed; each passed its two fallback/discovery checks. Wine utilization and functional results are not native Windows GPU measurements.
+- Existing independent CLI suites passed: 16 word/rule/crash-replay cases, six extra-input oracles, huge-rank and legacy-checkpoint cases, and 38 byte-exact baseline range comparisons with varied worker counts and boundaries through 2^128.
+- Independent second MinGW builds of the GUI and CLI were fully byte-identical. PE inspection confirmed AMD64, link timestamp zero, no Authenticode certificate, and GUI version 0.1.10.0 with an asInvoker manifest. Artifact hashes and inspection results are in benchmarks/v0.1.10/build-verification.json. The separate MSVC/PowerShell paths remain unexecuted in this environment.
+- PASSGEN_5 persists the compute selection. Schemas 1..4 retain their previous CPU execution policy. Unsupported inputs or reportable GPU failures use CPU; a failed GPU range is replayed before checkpoint advancement. This does not guarantee recovery from an operating-system or vendor-driver crash.
+- One GPU lane can run beside the CPU workers. Bounded waves wait for CPU results, so GPU utilization and whole-job speedup are workload-dependent. No new physical-GPU, native-Windows or billion-line performance result is claimed; historical CPU benchmarks remain labelled by version.
+- The user reported no Defender alert for v0.1.9 on their endpoint. v0.1.10 is unsigned and has no native Defender scan or Microsoft review verdict here; see SECURITY-NOTICE.md.
+
+Reproduce the OpenCL checks with scripts/setup-opencl-tests.sh and the commands in README.md. A test reporting SKIP is not evidence that its kernel ran.
+
+Historical validation follows.
+
 # v0.1.9 validation
 
 - Linux and Windows-under-Wine engine suites passed62checks. Resource-engine suites passed267checks on Linux and Wine, preserving CPU pacing, exact disk quota boundaries and Resume. Native Linux70%sample measured69.86%; Wine timing is not a native Windows utilization claim.

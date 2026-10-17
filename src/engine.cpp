@@ -2,6 +2,7 @@
 #include "unique.hpp"
 #include "checkpoint_retry.hpp"
 #include "cpu_budget.hpp"
+#include "gpu.hpp"
 #include <algorithm>
 #include <array>
 #include <filesystem>
@@ -123,6 +124,7 @@ void add_shift_letters(Config& c){
  mergeTokens(c,selected);
 }
 Index total(const Config& c){
+ require(unsigned(c.compute_mode)<=unsigned(ComputeMode::GpuPreferred),"Invalid compute mode");
  require(c.resource_percent<=100,"Resource percentage must be 0..100");
  require(c.tokens.size()<=100000,"Too many input tokens (maximum 100000)");
  require(!c.tokens.empty(),"Enter at least one character or word");
@@ -274,21 +276,22 @@ static void replace(const fs::path& a,const fs::path& b){
 static std::string encode(const std::string& s){static const char h[]="0123456789abcdef";std::string out;for(unsigned char b:s){out+=h[b>>4];out+=h[b&15];}return out.empty()?"-":out;}
 static std::string decode(const std::string& s){if(s=="-")return {};require(s.size()%2==0,"Invalid checkpoint");std::string out;auto val=[](char c){if(c>='0'&&c<='9')return c-'0';if(c>='a'&&c<='f')return c-'a'+10;throw std::runtime_error("Invalid checkpoint");};for(size_t i=0;i<s.size();i+=2)out+=char(val(s[i])*16+val(s[i+1]));return out;}
 struct State{Config c;Index next=0;uint64_t lines=0,offset=0,tailhash=hash("");};
-static std::string serialize(const State& s){std::ostringstream o;o<<"PASSGEN_4\n"<<s.next<<' '<<s.lines<<' '<<s.offset<<' '<<s.tailhash<<'\n';auto& c=s.c;o<<c.min_length<<' '<<c.max_length<<' '<<c.threads<<' '<<c.lower<<' '<<c.upper<<' '<<c.digit<<' '<<c.symbol<<' '<<c.no_repeat<<' '<<c.character_lengths<<' '<<c.resource_percent<<'\n'<<encode(c.prefix)<<' '<<encode(c.suffix)<<'\n'<<c.tokens.size()<<'\n';for(auto& t:c.tokens)o<<encode(t)<<'\n';return o.str();}
+static std::string serialize(const State& s){std::ostringstream o;o<<"PASSGEN_5\n"<<s.next<<' '<<s.lines<<' '<<s.offset<<' '<<s.tailhash<<'\n';auto& c=s.c;o<<c.min_length<<' '<<c.max_length<<' '<<c.threads<<' '<<c.lower<<' '<<c.upper<<' '<<c.digit<<' '<<c.symbol<<' '<<c.no_repeat<<' '<<c.character_lengths<<' '<<c.resource_percent<<' '<<unsigned(c.compute_mode)<<'\n'<<encode(c.prefix)<<' '<<encode(c.suffix)<<'\n'<<c.tokens.size()<<'\n';for(auto& t:c.tokens)o<<encode(t)<<'\n';return o.str();}
 static void save(const fs::path& p,const State& s){auto tmp=p;tmp+=".tmp";std::error_code ec;fs::remove(tmp,ec);{File f(tmp,false);auto body=serialize(s);f.write(body+"CHECK "+std::to_string(hash(body))+"\n");f.flush();}replace(tmp,p);}
 static State load(const fs::path& p){
  require(fs::file_size(p)<=16*1024*1024,"Checkpoint too large");std::ifstream f(p,std::ios::binary);std::string all((std::istreambuf_iterator<char>(f)),{});
  auto at=all.rfind("CHECK ");require(at!=std::string::npos,"Invalid checkpoint");auto body=all.substr(0,at);std::istringstream check(all.substr(at+6));uint64_t checksum=0;
  require(bool(check>>checksum)&&checksum==hash(body),"Checkpoint checksum mismatch");
  std::istringstream in(body);std::string magic,a,b;State s;size_t n=0;auto& c=s.c;
- require(bool(in>>magic>>s.next>>s.lines>>s.offset>>s.tailhash>>c.min_length>>c.max_length>>c.threads>>c.lower>>c.upper>>c.digit>>c.symbol>>c.no_repeat)&&(magic=="PASSGEN_1"||magic=="PASSGEN_2"||magic=="PASSGEN_3"||magic=="PASSGEN_4"),"Invalid checkpoint");
- if(magic=="PASSGEN_3"||magic=="PASSGEN_4")require(bool(in>>c.character_lengths),"Invalid checkpoint");
- if(magic=="PASSGEN_4")require(bool(in>>c.resource_percent),"Invalid resource policy");
+ require(bool(in>>magic>>s.next>>s.lines>>s.offset>>s.tailhash>>c.min_length>>c.max_length>>c.threads>>c.lower>>c.upper>>c.digit>>c.symbol>>c.no_repeat)&&(magic=="PASSGEN_1"||magic=="PASSGEN_2"||magic=="PASSGEN_3"||magic=="PASSGEN_4"||magic=="PASSGEN_5"),"Invalid checkpoint");
+ if(magic=="PASSGEN_3"||magic=="PASSGEN_4"||magic=="PASSGEN_5")require(bool(in>>c.character_lengths),"Invalid checkpoint");
+ if(magic=="PASSGEN_4"||magic=="PASSGEN_5")require(bool(in>>c.resource_percent),"Invalid resource policy");
+ if(magic=="PASSGEN_5"){unsigned mode=0;require(bool(in>>mode)&&mode<=2,"Invalid compute mode");c.compute_mode=static_cast<ComputeMode>(mode);}
  require(bool(in>>a>>b>>n)&&n<=100000,"Invalid checkpoint");c.prefix=decode(a);c.suffix=decode(b);
  for(size_t i=0;i<n;++i){require(bool(in>>a),"Invalid checkpoint");c.tokens.push_back(decode(a));}
  auto count=total(c);require(s.next<=count&&s.lines<=s.next&&s.offset<=INT64_MAX,"Invalid checkpoint position");
  auto range=bounds(c);UniqueOutputs unique(c,range.minimum,range.maximum);
- require(magic=="PASSGEN_3"||magic=="PASSGEN_4"||!unique.needsCanonicalization(),"This older word checkpoint may contain duplicates. Start a new output with PassGen 0.1.2");
+ require(magic=="PASSGEN_3"||magic=="PASSGEN_4"||magic=="PASSGEN_5"||!unique.needsCanonicalization(),"This older word checkpoint may contain duplicates. Start a new output with PassGen 0.1.2");
  return s;
 }
 // A run owns its workers; no thread creation per output block.
@@ -312,7 +315,7 @@ struct Alphabet {
   for(const auto& token:c.tokens){masks.push_back(classes(token));chars.push_back(c.character_lengths?characters(token):0);fixed&=token.size()==width;uniformChars&=chars.back()==chars.front();}
  }
 };
-struct RangeResult {std::string text;uint64_t lines=0,scanned=0;bool quota_hit=false;};
+struct RangeResult {std::string text;uint64_t lines=0,scanned=0;bool quota_hit=false,from_gpu=false;};
 static RangeResult generateRange(const Config& c,Index begin,uint64_t span,const UniqueOutputs& unique,const Plan& plan,const Alphabet& alphabet,size_t maxLine,const std::atomic<bool>& stop,double cpu_fraction,uint64_t byte_limit=UINT64_MAX){
  RangeResult result;auto& text=result.text;text.reserve(size_t(std::min<uint64_t>(byte_limit,span*maxLine)));const size_t radix=c.tokens.size();
  CpuBudget cpu(cpu_fraction,stop);
@@ -387,12 +390,49 @@ static RangeResult generateRange(const Config& c,Index begin,uint64_t span,const
  }
  cpu.pace();return result;
 }
-void run(Config c,const std::string& output,bool resume,Progress& progress,const std::function<void(const Config&)>& loaded,const ResourceSnapshot* resource_snapshot){
+struct GpuSlice {
+ unsigned length=0;size_t span=0;std::vector<uint32_t> digits;
+};
+static GpuSlice gpuSlice(const Config& c,Index rank,uint64_t requested,const Plan& plan){
+ const Segment* segment=nullptr;
+ for(const auto& part:plan.segments){if(rank<part.count){segment=&part;break;}rank-=part.count;}
+ require(segment!=nullptr,"GPU candidate index out of range");Index power=1;GpuSlice slice;
+ for(unsigned n=1;n<=segment->tokens.maximum;++n){power*=uint32_t(c.tokens.size());if(n<segment->tokens.minimum)continue;if(rank<power){slice.length=n;break;}rank-=power;}
+ require(slice.length!=0,"GPU candidate index out of range");auto remaining=power-rank;
+ slice.span=size_t(remaining<Index(requested)?remaining.u64():requested);slice.digits.resize(slice.length);
+ for(unsigned n=0;n<slice.length;++n)slice.digits[n]=rank.divide(uint32_t(c.tokens.size()));
+ return slice;
+}
+static RangeResult generateGpuRange(GpuEngine& gpu,const Config& c,Index begin,uint64_t span,const Plan& plan,const Alphabet& alphabet,size_t maxLine,const std::atomic<bool>& stop,size_t testCap=0){
+ RangeResult result;result.text.reserve(size_t(span)*maxLine);
+ while(span&&!stop.load()){
+  auto slice=gpuSlice(c,begin,span,plan);
+  size_t row=c.prefix.size()+slice.length*alphabet.width+c.suffix.size()+1;
+  size_t capacity=gpu.max_span(row);if(testCap)capacity=std::min(capacity,testCap);
+  require(capacity>0,"GPU buffer cannot fit this output length");slice.span=std::min(slice.span,capacity);
+  auto part=gpu.generate(slice.digits,slice.length,slice.span,alphabet.required,c.no_repeat,c.prefix,c.suffix,&stop,c.resource_percent?c.resource_percent:100);
+  if(!part.span)break;
+  require(part.span==slice.span,"Incomplete GPU batch");
+  result.text+=part.text;result.lines+=part.lines;result.scanned+=part.span;result.from_gpu=true;
+  begin+=part.span;span-=part.span;
+ }
+ return result;
+}
+// Choose a representative large-length range, not only the tiny length-one prefix.
+static Index gpuProbeStart(const Config& c,const Plan& plan,const Index& resumed){
+ Index start=0,chosen=0;
+ for(const auto& segment:plan.segments){Index tokenStart=start,power=1;
+  for(unsigned n=1;n<=segment.tokens.maximum;++n){power*=uint32_t(c.tokens.size());if(n<segment.tokens.minimum)continue;chosen=tokenStart;tokenStart+=power;}
+  start+=segment.count;
+ }
+ return chosen<resumed?resumed:chosen;
+}
+void run(Config c,const std::string& output,bool resume,Progress& progress,const std::function<void(const Config&)>& loaded,const ResourceSnapshot* resource_snapshot,const GpuTestOptions* gpu_test){
  auto out=fs::absolute(path(output));auto cp=out;cp+=".pgstate";State s;
  if(resume){s=load(cp);c=s.c;}else {std::unordered_set<std::string> seen;c.tokens.erase(std::remove_if(c.tokens.begin(),c.tokens.end(),[&](const auto& t){return !seen.insert(t).second;}),c.tokens.end());total(c);require(!fs::exists(cp),"Checkpoint already exists; select another output or resume");s.c=c;}
- ResourcePlan limits;
+ ResourcePlan limits;ResourceSnapshot snapshot;
+ if(c.resource_percent||c.compute_mode!=ComputeMode::Cpu)snapshot=resource_snapshot?*resource_snapshot:detect_resources(output);
  if(c.resource_percent){
-  auto snapshot=resource_snapshot?*resource_snapshot:detect_resources(output);
   require(snapshot.cpu_known&&snapshot.memory_known&&snapshot.disk_known,"Cannot identify CPU, RAM or free output space; choose manual mode or an accessible output folder");
   limits=plan_resources(snapshot,c.resource_percent);
   require(limits.memory_sufficient,"Not enough available RAM within the resource budget");
@@ -403,6 +443,56 @@ void run(Config c,const std::string& output,bool resume,Progress& progress,const
  size_t maxLine=maxToken*c.max_length+c.prefix.size()+c.suffix.size()+1;
  uint64_t buffer=c.resource_percent?limits.buffer_bytes_per_worker:4*1024*1024;
  require(!c.resource_percent||buffer>=maxLine,"A result line exceeds the available RAM buffer budget");
+ progress.gpu_available=false;progress.gpu_used=false;progress.gpu_scanned=0;
+ progress.compute_status.set("CPU selected");
+ Alphabet alphabet(c);std::unique_ptr<GpuEngine> gpu;uint64_t gpuResultLimit=0;
+ const size_t testCap=gpu_test?gpu_test->max_batch_candidates:0;
+ if(c.compute_mode!=ComputeMode::Cpu&&s.next<count&&!progress.stop){
+  progress.compute_status.set("Inspecting OpenCL GPU and driver...");
+  if(!alphabet.fixed||(!alphabet.uniformChars&&c.character_lengths)||unique.needsCanonicalization())
+   progress.compute_status.set("CPU: variable-width or ambiguous input");
+  else if(c.compute_mode==ComputeMode::Automatic&&count-s.next<Index(8192)&&!(gpu_test&&gpu_test->skip_speed_selection))
+   progress.compute_status.set("CPU: small job; GPU startup would add overhead");
+  else {
+   uint64_t reserve=(2+2*uint64_t(c.threads))*1024*1024;
+   uint64_t ramBudget=c.resource_percent?limits.memory_budget_bytes:resource_detail::percentage(snapshot.memory_available_bytes,70);
+   uint64_t cpuBuffers=buffer*c.threads;
+   uint64_t hostBudget=ramBudget>reserve+cpuBuffers?std::min<uint64_t>(8*1024*1024,ramBudget-reserve-cpuBuffers):0;
+   if(!snapshot.memory_known||hostBudget<256*1024)progress.compute_status.set("CPU: insufficient spare RAM for GPU transfer buffers");
+   else try {
+    std::vector<GpuToken> tokens;for(size_t n=0;n<c.tokens.size();++n)tokens.push_back({c.tokens[n],alphabet.masks[n]});
+    gpuResultLimit=hostBudget/2;
+    gpu.reset(new GpuEngine(std::move(tokens),size_t(hostBudget/2),gpu_test&&gpu_test->allow_cpu_opencl));
+    if(!gpu->available()){progress.compute_status.set("CPU: "+gpu->status());gpu.reset();}
+    else {
+     progress.gpu_available=true;
+     bool use=true;
+     if(c.compute_mode==ComputeMode::Automatic&&!(gpu_test&&gpu_test->skip_speed_selection)){
+      progress.compute_status.set("Calibrating CPU and OpenCL GPU...");
+      Index probe=gpuProbeStart(c,plan,s.next);auto slice=gpuSlice(c,probe,65536,plan);
+      size_t row=c.prefix.size()+slice.length*alphabet.width+c.suffix.size()+1;
+      slice.span=std::min({slice.span,gpu->max_span(row),size_t(buffer/maxLine)});if(testCap)slice.span=std::min(slice.span,testCap);
+      if(slice.span<256)use=false;
+      else {
+       auto warm=gpu->generate(slice.digits,slice.length,slice.span,alphabet.required,c.no_repeat,c.prefix,c.suffix,&progress.stop,100);
+       auto started=std::chrono::steady_clock::now();
+       auto reference=generateRange(c,probe,slice.span,unique,plan,alphabet,maxLine,progress.stop,1);
+       auto cpuTime=std::chrono::steady_clock::now()-started;
+       if(!progress.stop)require(warm.span==reference.scanned&&warm.text==reference.text,"GPU calibration output mismatch");
+       std::string().swap(warm.text);
+       started=std::chrono::steady_clock::now();
+       auto measured=gpu->generate(slice.digits,slice.length,slice.span,alphabet.required,c.no_repeat,c.prefix,c.suffix,&progress.stop,100);
+       auto gpuTime=std::chrono::steady_clock::now()-started;
+       if(progress.stop)use=false;
+       else {require(reference.scanned==measured.span&&reference.text==measured.text,"GPU calibration output mismatch");use=gpuTime*1.05<cpuTime;}
+      }
+     }
+     if(use)progress.compute_status.set("CPU + "+gpu->status());
+     else {progress.compute_status.set(progress.stop?"Stopped during compute selection":"CPU: GPU calibration did not improve transfer-inclusive speed");gpu.reset();}
+    }
+   }catch(const std::exception& error){progress.compute_status.set(std::string("CPU fallback: ")+error.what());gpu.reset();}
+  }
+ }
  File file(out,resume);
  if(resume){require(file.size()>=s.offset,"Output is shorter than checkpoint");require(hash(file.tail(s.offset))==s.tailhash,"Output tail changed; resume refused");file.truncate(s.offset);file.flush();}
  else {file.flush();save(cp,s);}
@@ -414,15 +504,32 @@ void run(Config c,const std::string& output,bool resume,Progress& progress,const
  const double cpuFraction=c.resource_percent?limits.cpu_fraction:1;
 
  if(s.next==count||progress.stop)return;
- Alphabet alphabet(c);Workers workers(c.threads);
+ size_t gpuBatches=0;
+ Workers workers(c.threads);std::unique_ptr<Workers> gpuWorker;if(gpu)gpuWorker.reset(new Workers(1));
  while(s.next<count&&!progress.stop){
-  struct Task {Index begin;uint64_t span;std::future<RangeResult> result;};
+  struct Task {Index begin;uint64_t span;std::future<RangeResult> result;bool gpu=false;};
   std::vector<Task> tasks;Index end=s.next;
+  if(gpu){
+   auto slice=gpuSlice(c,end,uint64_t(chunk),plan);
+   size_t row=c.prefix.size()+slice.length*alphabet.width+c.suffix.size()+1;
+   size_t maximum=gpu->max_span(row);if(testCap)maximum=std::min(maximum,testCap);
+   if(maximum){uint64_t span=std::min<uint64_t>(slice.span,gpuResultLimit/maxLine);if(testCap)span=std::min<uint64_t>(span,testCap);if(!span)span=std::min<size_t>(slice.span,maximum);Index begin=end;end+=span;
+    const bool injectedFailure=gpu_test&&gpuBatches++>=gpu_test->fail_after_batches;
+    tasks.push_back({begin,span,gpuWorker->submit([&,begin,span,injectedFailure]{if(injectedFailure)throw std::runtime_error("Injected OpenCL recovery test failure");return generateGpuRange(*gpu,c,begin,span,plan,alphabet,maxLine,progress.stop,testCap);}),true});
+   }else {progress.compute_status.set("CPU: GPU buffer does not fit the next output length");gpu.reset();}
+  }
   for(unsigned w=0;w<c.threads&&end<count;++w){Index begin=end;auto remaining=count-end;uint64_t span=remaining<Index(chunk)?remaining.u64():chunk;end+=span;
    tasks.push_back({begin,span,workers.submit([&,begin,span]{return generateRange(c,begin,span,unique,plan,alphabet,maxLine,progress.stop,cpuFraction);})});}
-  State next=s;
+  State next=s;uint64_t gpuCommitted=0;
   for(auto& task:tasks){
-   auto part=task.result.get();
+   RangeResult part;
+   try {part=task.result.get();}
+   catch(const std::exception& error){
+    if(!task.gpu)throw;
+    progress.compute_status.set(std::string("CPU fallback after GPU error: ")+error.what());gpu.reset();
+    for(auto& pending:tasks)if(pending.result.valid())pending.result.wait();
+    part=generateRange(c,task.begin,task.span,unique,plan,alphabet,maxLine,progress.stop,cpuFraction);
+   }
    if(c.resource_percent){
     uint64_t used=next.offset-initialOffset;
     uint64_t available=limits.disk_budget_bytes>used?limits.disk_budget_bytes-used:0;
@@ -435,6 +542,7 @@ void run(Config c,const std::string& output,bool resume,Progress& progress,const
     }
    }
    require(next.offset<=uint64_t(INT64_MAX)-part.text.size(),"Output exceeds supported file size");
+   if(part.from_gpu)gpuCommitted+=part.scanned;
    file.write(part.text);next.offset+=part.text.size();next.lines+=part.lines;next.next=task.begin+part.scanned;
    if(part.quota_hit){progress.disk_limit=true;progress.stop=true;}
    if(part.scanned<task.span)break;
@@ -443,6 +551,7 @@ void run(Config c,const std::string& output,bool resume,Progress& progress,const
   // committed rank prefix is kept; later partial worker results are discarded.
   for(auto& task:tasks)if(task.result.valid())task.result.get();
   file.flush();next.tailhash=hash(file.tail(next.offset));save(cp,next);s=std::move(next);
+  if(gpuCommitted){progress.gpu_used=true;progress.gpu_scanned.fetch_add(gpuCommitted);}
   progress.scanned=s.next;progress.written=s.lines;progress.bytes=s.offset;
 
  }

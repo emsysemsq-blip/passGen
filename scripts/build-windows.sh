@@ -5,14 +5,17 @@ mkdir -p dist
 compiler="${CXX_WINDOWS:-x86_64-w64-mingw32-g++-posix}"
 resource_compiler="${WINDRES_WINDOWS:-x86_64-w64-mingw32-windres}"
 "$resource_compiler" --preprocessor="$compiler" --preprocessor-arg=-E --preprocessor-arg=-xc --preprocessor-arg=-DRC_INVOKED -I src src/passgen.rc -O coff -o dist/passgen-res.o
-"$compiler" -std=c++17 -O3 -Wall -Wextra -Wpedantic -pthread -static -static-libgcc -static-libstdc++ -municode -mwindows src/engine.cpp src/winmain.cpp dist/passgen-res.o -Wl,--no-insert-timestamp -lcomdlg32 -lcomctl32 -o dist/PassGen.exe
-"$compiler" -std=c++17 -O3 -Wall -Wextra -Wpedantic -pthread -static -static-libgcc -static-libstdc++ -municode src/engine.cpp src/cli.cpp -Wl,--no-insert-timestamp -o dist/passgen-cli.exe
-"$compiler" -std=c++17 -O2 -pthread -static -static-libgcc -static-libstdc++ -Isrc src/engine.cpp tests/engine_test.cpp -o dist/passgen-tests.exe
+"$compiler" -std=c++17 -O3 -Wall -Wextra -Wpedantic -pthread -static -static-libgcc -static-libstdc++ -municode -mwindows src/engine.cpp src/gpu.cpp src/winmain.cpp dist/passgen-res.o -Wl,--no-insert-timestamp -lcomdlg32 -lcomctl32 -o dist/PassGen.exe
+"$compiler" -std=c++17 -O3 -Wall -Wextra -Wpedantic -pthread -static -static-libgcc -static-libstdc++ -municode src/engine.cpp src/gpu.cpp src/cli.cpp -Wl,--no-insert-timestamp -o dist/passgen-cli.exe
+"$compiler" -std=c++17 -O2 -pthread -static -static-libgcc -static-libstdc++ -Isrc src/engine.cpp src/gpu.cpp tests/engine_test.cpp -o dist/passgen-tests.exe
 
 "$compiler" -std=c++17 -O2 -pthread -static -static-libgcc -static-libstdc++ -Isrc tests/gui_smoke.cpp -o dist/passgen-gui-smoke.exe
 
-"$compiler" -std=c++17 -O2 -pthread -static -static-libgcc -static-libstdc++ -Isrc src/engine.cpp tests/checkpoint_lock_test.cpp -o dist/passgen-checkpoint-lock-tests.exe
+"$compiler" -std=c++17 -O2 -pthread -static -static-libgcc -static-libstdc++ -Isrc src/engine.cpp src/gpu.cpp tests/checkpoint_lock_test.cpp -o dist/passgen-checkpoint-lock-tests.exe
 "$compiler" -std=c++17 -O2 -static -Isrc tests/checkpoint_retry_test.cpp -o dist/passgen-checkpoint-retry-tests.exe
 
 "$compiler" -std=c++17 -O2 -Wall -Wextra -pthread -static -Isrc tests/resource_test.cpp -o dist/passgen-resource-tests.exe
-"$compiler" -std=c++17 -O2 -Wall -Wextra -pthread -static -Isrc src/engine.cpp tests/resource_engine_test.cpp -o dist/passgen-resource-engine-tests.exe
+"$compiler" -std=c++17 -O2 -Wall -Wextra -pthread -static -Isrc src/engine.cpp src/gpu.cpp tests/resource_engine_test.cpp -o dist/passgen-resource-engine-tests.exe
+
+"$compiler" -std=c++17 -O2 -Wall -Wextra -pthread -static -Isrc src/gpu.cpp tests/gpu_test.cpp -o dist/passgen-gpu-tests.exe
+"$compiler" -std=c++17 -O2 -Wall -Wextra -pthread -static -Isrc src/engine.cpp src/gpu.cpp tests/gpu_engine_test.cpp -o dist/passgen-gpu-engine-tests.exe

@@ -1,3 +1,14 @@
+# 0.1.10
+
+- Add a real optional OpenCL 1.2 generation backend, loaded dynamically, selecting GPU devices only in production. No SDK/runtime/driver is downloaded by the application.
+- Default new GUI/CLI jobs to Auto: validate first GPU rows against the CPU and compare transfer-inclusive sample timing before selecting CPU+GPU. Add CPU-only and GPU-preferred modes and --list-gpus inventory.
+- Partition rank ranges across persistent CPU workers and one GPU lane, commit output in order, and replay failed/uncommitted GPU ranges on CPU. Preserve exact deduplication and arbitrary-precision global ranks.
+- Support fixed-byte-width prefix-free token pools, UTF-8, ASCII requirements and adjacent-repeat rules. Mixed-width/ambiguous inputs retain the exact CPU path.
+- Bound RAM/VRAM buffers, account for shared GPU memory and target approximate GPU duty at the selected resource percentage. Report actual backend reason and committed GPU scanned count.
+- Save PASSGEN_5 compute preference and read schemas1..4 with their previous CPU policy. Resume restores saved compute mode; no silent change of old jobs.
+- Add real-kernel tests through explicitly permitted PoCL CPU devices, integration/failure/quota/stop/resume/128-bit oracles, and reproducible optional test-runtime setup.
+- No physical GPU or native Windows GPU throughput validation was available. User feedback: v0.1.9 produced no Defender alert on that user's system; v0.1.10 has no new Defender verdict or publisher signature.
+
 # 0.1.9
 
 - Optimize uniform-width, prefix-free output generation by removing redundant per-result scalar accounting and rule dispatch when no checks remain; retain bounded CPU pacing/stop checks and exact line-byte quota boundaries.

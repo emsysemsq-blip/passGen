@@ -1,10 +1,12 @@
-# Defender review status — v0.1.9
+# Defender review status — v0.1.10
 
 The user reported Microsoft Defender detection `Trojan:Win32/Sabsik.FL.A!ml` (Severe, Removed) against the v0.1.8 download. The detection is unresolved. See audits/passgen-v0.1.8/REPORT.md for artifact reconstruction, toolchain-integrity checks and investigation limits.
 
-This v0.1.9 release contains a real CPU-generation optimization, transparent version information and a standard asInvoker manifest. It has not been scanned with native Microsoft Defender in this environment, has no Authenticode publisher signature, and has not received a Microsoft file-review verdict. Do not interpret the new version/hash, metadata, reproducible build, or successful functional tests as antivirus clearance.
+The user subsequently reported no Defender alert for v0.1.9 on their system. That observation is specific to that file, endpoint and security intelligence; it is not an official Microsoft review verdict.
 
-The distributed executable is a MinGW build. A separate standard MSVC build script is included as a supported development path, but it has not been executed here. There is no claim that either compiler resolves a particular antivirus detection.
+This v0.1.10 release adds an optional OpenCL compute backend and dynamically loads the system OpenCL runtime. It has not been scanned with native Microsoft Defender here, has no Authenticode publisher signature, and has not received a Microsoft file-review verdict. Kernel correctness tests and successful functional tests are not antivirus clearance. The application does not install GPU drivers or download executable code.
+
+The distributed executable is a MinGW build. A separate standard MSVC build script is included but has not been executed here.
 
 No obfuscation, executable packing, antivirus exclusions, protection-disabling code, or file submission to an external scanner was added. This release retains the resource controls, exact deduplication and checkpoint recovery.
 

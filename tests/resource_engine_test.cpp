@@ -100,7 +100,7 @@ int main(){
    pg::run({},output.u8string(),true,progress,[&](const pg::Config& saved){manual=saved.resource_percent==0&&saved.threads==2;},&unknown);
    check(manual&&read(output)=="a\nb\naa\nab\nba\nbb\n","Legacy checkpoint remains unrestricted and ignores unknown resource detection");
    check(progress.disk_budget_bytes.load()==UINT64_MAX&&progress.active_workers.load()==2,"Legacy progress preserves its original worker policy");
-   check(read(fs::u8path(output.u8string()+".pgstate")).find("PASSGEN_4\n")==0,"Legacy checkpoint upgrades to the new durable schema");
+   check(read(fs::u8path(output.u8string()+".pgstate")).find("PASSGEN_5\n")==0,"Legacy checkpoint upgrades to the new durable schema");
   }
 
   config={};config.tokens={"a","b"};config.max_length=2;config.resource_percent=70;

@@ -1,3 +1,13 @@
+# PassGen v0.1.10 compute selection
+
+The new Auto mode compares a warmed OpenCL sample, including transfer and compaction, with the CPU renderer. It enables the GPU only if that sample is faster. GPU-preferred mode bypasses that timing choice while retaining correctness checks and CPU fallback.
+
+This environment has no physical GPU. Real OpenCL kernel tests used PoCL on a CPU through an explicit test hook; they establish functional coverage, not GPU acceleration or RTX 4090 throughput. No GPU speedup is claimed for v0.1.10. Hybrid generation uses bounded waves and waits for each wave's CPU results before committing; a faster GPU can be idle during that wait. Storage and checkpoint writes can also limit total speed.
+
+The CPU measurements below are historical results for the named versions and workloads. They do not measure v0.1.10's Auto mode or predict native Windows performance.
+
+Historical measurements follow.
+
 # PassGen v0.1.9 comparison
 
 Uniform-width, prefix-free generation skips redundant scalar/rule work when every output passes those rules. Five alternating repetitions per build, abcd at final length12, workers4, resource-percent0, produced exactly16,777,216 lines and218,103,808bytes per run, with the same SHA256 in all ten runs.

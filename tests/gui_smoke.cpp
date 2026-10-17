@@ -20,6 +20,7 @@ int main(int argc,char**){PROCESS_INFORMATION process{};HWND h=nullptr;std::file
  auto field=[&](int id,const std::wstring& s){require(SetWindowTextW(GetDlgItem(h,id),s.c_str()),"Set GUI field");};
  auto click=[&](int id){SendMessageW(GetDlgItem(h,id),BM_CLICK,0,0);};
  auto wait=[&](const wchar_t* token){for(int i=0;i<2400;++i){if(get(GetDlgItem(h,Status)).find(token)!=std::wstring::npos)return;std::this_thread::sleep_for(std::chrono::milliseconds(25));}throw std::runtime_error("GUI operation timed out");};
+ require(SendMessageW(GetDlgItem(h,Compute),CB_GETCURSEL,0,0)==0,"Automatic CPU/GPU selection defaults on");
  require(SendMessageW(GetDlgItem(h,Resource70),BM_GETCHECK,0,0)==BST_CHECKED,"Auto 70 defaults on");require(!IsWindowEnabled(GetDlgItem(h,Threads)),"Auto mode controls worker count");
  auto resources=get(GetDlgItem(h,ResourceInfo));require(resources.find(L"CPU ")!=std::wstring::npos&&resources.find(L"RAM free")!=std::wstring::npos&&resources.find(L"Disk free")!=std::wstring::npos,"Resource discovery shown in GUI");
  wchar_t temp[MAX_PATH];GetTempPathW(MAX_PATH,temp);out=std::filesystem::path(temp)/(L"passgen-gui-"+std::to_wstring(GetTickCount64())+L".txt");

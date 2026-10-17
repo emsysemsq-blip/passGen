@@ -48,7 +48,8 @@ function Build-Program {
         [bool]$UsesGuiResource = $false
     )
     $objects = @(Compile-Source $Source $Name)
-    if ($UsesEngine) { $objects += $engineObject }
+    if ($UsesEngine) { $objects += $engineObject; $objects += $gpuObject }
+    if ($Name -eq 'passgen-gpu-tests') { $objects += $gpuObject }
     $linkFlags = @('/NOLOGO', '/MACHINE:X64', "/SUBSYSTEM:$Subsystem,10.00", "/OUT:dist/$Name.exe")
     if ($UsesGuiResource) {
         $objects += 'dist/passgen.res'
@@ -64,6 +65,7 @@ function Build-Program {
 & rc.exe /nologo /I src /fo dist/passgen.res src/passgen.rc | Out-Host
 if ($LASTEXITCODE -ne 0) { throw 'Windows version/manifest resource build failed' }
 $engineObject = Compile-Source 'src/engine.cpp' 'engine'
+$gpuObject = Compile-Source 'src/gpu.cpp' 'gpu'
 
 Build-Program -Name 'PassGen' -Source 'src/winmain.cpp' -Subsystem 'WINDOWS' `
     -Libraries @('user32.lib', 'gdi32.lib', 'comdlg32.lib', 'comctl32.lib') -UsesGuiResource $true
@@ -75,12 +77,17 @@ Build-Program -Name 'passgen-checkpoint-retry-tests' -Source 'tests/checkpoint_r
 Build-Program -Name 'passgen-resource-tests' -Source 'tests/resource_test.cpp' -UsesEngine $false
 Build-Program -Name 'passgen-gui-smoke' -Source 'tests/gui_smoke.cpp' -UsesEngine $false -Libraries @('user32.lib')
 
+Build-Program -Name 'passgen-gpu-tests' -Source 'tests/gpu_test.cpp' -UsesEngine $false
+Build-Program -Name 'passgen-gpu-engine-tests' -Source 'tests/gpu_engine_test.cpp'
+
 # The GUI smoke helper launches PassGen.exe relative to its working directory.
 # Run the complete native suite in dist, and fail immediately on any nonzero exit.
 Push-Location dist
 try {
     foreach ($test in @(
         'passgen-tests.exe',
+        'passgen-gpu-tests.exe',
+        'passgen-gpu-engine-tests.exe',
         'passgen-resource-engine-tests.exe',
         'passgen-checkpoint-retry-tests.exe',
         'passgen-resource-tests.exe',
