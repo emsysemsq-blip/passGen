@@ -24,6 +24,8 @@ unsigned default_max_length(const Config&);
 Index total(const Config&);
 std::string candidate(const Config&, Index);
 bool accepts(const Config&, const std::string&);
+struct Preview { std::vector<std::string> samples; size_t inspected=0; };
+Preview preview(const Config&, size_t maximum=12);
 // output must not exist for a new job; resume loads all generation settings from checkpoint.
 void run(Config config, const std::string& output, bool resume, Progress&,
          const std::function<void(const Config&)>& loaded = {});

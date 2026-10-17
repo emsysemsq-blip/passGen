@@ -1,61 +1,49 @@
-# PassGen 0.1.2 — validation
+# PassGen 0.1.3 — validation
 
-Selected workflow: exhaustive, unique wordlist generation across every selected final-character length, with durable stop/resume. Tested in Debian 13 amd64 and Wine 10/Xvfb. Native Windows 10/11 remains unverified.
+This release addresses the generic Windows `Checkpoint replace failed` report and the empty sequential first-1000 preview. The exact error code/root cause on the user's Windows machine was unavailable in the older screenshot; the release does not claim to have reproduced that specific machine's cause.
 
-## Evidence
+## Verified results
 
-- **40 C++ engine checks** passed on Linux and on the Windows executable under Wine. These include deterministic output, Unicode, class rules, large ranks, crash-tail recovery, and nonempty mid-job recovery of ambiguous word input. A resumed ambiguous-word job matched a complete run byte for byte and had no duplicate lines.
-- The C++ suite also passed with AddressSanitizer and UndefinedBehaviorSanitizer. The CLI uniqueness and large-rank suites passed with both sanitizers enabled; no findings were reported.
-- An independent Python exhaustive oracle checked **16 word/rule cases**: four token sets, character/token length policies, and adjacent-token rejection on/off. Cases include cross-token-count aliases, same-count aliases, input-order permutations and Persian words. Actual files matched the independently enumerated, deduplicated lists exactly.
-- Each word/rule case was replayed from its initial checkpoint after appending an uncommitted crash tail. No missing or duplicate output resulted. The separate C++ tests cover recovery from a nonempty committed checkpoint.
-- With input `aabb`, final lengths **10 through 15** produced exactly **64,512 unique lines**; all six lengths occurred in ascending order, from `aaaaaaaaaa` through `bbbbbbbbbbbbbbb`. Duplicate input characters did not increase the search alphabet.
-- Prefix/suffix Unicode length counting, default word lengths, and safe refusal of an ambiguous old word checkpoint were exercised. Refusal preserved both old files unchanged.
-- Large-space generation/resume still produced the exact final three candidates ending at **2^64, 2^65 and 2^128**, with idempotent completed resume. Compatible v0.1.0 checkpoints upgraded to PASSGEN_3 without missing/duplicate lines.
-- The actual Windows GUI under Wine passed: unique word aliases, final character lengths including prefix/suffix, large default alphabet preview, exact Unicode output, stop/resume, exact 2,097,150-line character output and clean close.
+- **44 engine checks passed on Linux and on the Windows executable under Wine.** These retain unique-output, length, rule, Unicode, durable resume and large-rank coverage, plus four preview regressions.
+- **44 engine checks passed with AddressSanitizer and UndefinedBehaviorSanitizer**, without reported findings.
+- The preview regression reproduces mixed words `e`, `l`, `I` and a 20-character word at final lengths 14..30. Its first 1,000 sequential ranks produce no accepted line. The new bounded sampler finds valid later ranks. Samples satisfy the selected final lengths/rules, stay unique and remain within the inspection budget. An impossible ASCII class requirement produces a bounded empty preview.
+- **Checkpoint retry policy tests passed on Linux and Windows/Wine:** transient sharing failures followed by success, bounded access-denied retries, immediate disk-full reporting, and no wait on first-attempt success.
+- **Real Windows API sharing-lock integration passed under Wine:** a checkpoint was opened without delete-sharing; releasing that lock after 250 ms allowed normal completion. A persistent lock exhausted retries, preserved the last committed checkpoint, left confirmed progress unchanged, and reported the actual Windows error code. After unlocking, Resume regenerated the uncommitted tail and matched the successful reference output byte for byte.
+- The integration test compares the application's reported error code with a direct `MoveFileExW` reference call under the same lock rather than assuming every Windows implementation maps the lock to code 32. The initial hardcoded-code assertion was replaced by that direct comparison; the final assertion passed.
+- **Actual GUI integration passed under Wine/Xvfb:** representative preview of later mixed-word ranks, unique word aliases, final lengths including prefix/suffix, large-alphabet preview, exact Unicode output, stop/resume, exact 2,097,150-line character output and clean close.
 
-The release does not claim a full billion-candidate run, physical power-loss test, competitive throughput benchmark or native Windows validation. Very large finite spaces remain constrained by time and storage. Selection is currently limited to lengths 1..128; there is no output-count quota and no 64-bit candidate-count limit.
+Native Windows 10/11, the user's actual Downloads folder, antivirus interaction, hardware power loss and a full billion-candidate run remain unverified. Wine sharing-lock tests validate the exercised compatibility implementation, not every native Windows filesystem/security product.
+
+## Changes and limits
+
+Transient Windows errors 5, 32, 33 and 1224 receive up to eight replacement attempts with waits of 25, 50, 100, 200, 400, 400 and 400 ms (about 1.575 seconds total programmed delay). Other error codes return immediately. The committed checkpoint is not explicitly deleted or truncated to bypass the lock. Persistent errors keep the Windows code and UTF-8-converted localized system explanation in the application error.
+
+The sampler inspects at most 4,096 unique ranks and returns up to 12 matches. It prioritizes token-length boundaries, end ranks and cycling token patterns, then initial sequential ranks. It prepares the generation plan once. Sampling is not exhaustive or statistically uniform and an empty sample does not prove there are no valid outputs. Its inspection budget does not limit actual generation.
+
+Schema PASSGEN_3 and generation ordering are unchanged from v0.1.2. Resume reads the same committed rank, verifies the saved output tail and reconstructs uncommitted bytes as before. Keep output and checkpoint together; do not edit the output manually. A generic old error cannot establish that every user's checkpoint/output is intact; Resume performs the consistency checks.
 
 ## Reproduce
 
 ```sh
 bash scripts/build-linux.sh
-python3 tests/unique_output_test.py ./build/passgen-cli
-python3 tests/large_space_test.py ./build/passgen-cli
 
 g++ -std=c++17 -O1 -g -fsanitize=address,undefined \
   -fno-omit-frame-pointer -pthread -Isrc \
   src/engine.cpp tests/engine_test.cpp -o build/passgen-tests-asan
 ./build/passgen-tests-asan
 
-g++ -std=c++17 -O1 -g -fsanitize=address,undefined \
-  -fno-omit-frame-pointer -pthread \
-  src/engine.cpp src/cli.cpp -o build/passgen-cli-asan
-python3 tests/unique_output_test.py ./build/passgen-cli-asan
-python3 tests/large_space_test.py ./build/passgen-cli-asan
-
 PATH=/workspace/toolchain/root/usr/bin:$PATH \
 CXX_WINDOWS=/workspace/toolchain/root/usr/bin/x86_64-w64-mingw32-g++-posix \
 bash scripts/build-windows.sh
 ```
 
-With a configured Wine and display, run the engine and GUI suites from `dist`:
+On native Windows, or under an initialized Wine with a display, run from `dist`:
 
-```sh
-wine passgen-tests.exe
-wine passgen-gui-smoke.exe
+```text
+passgen-checkpoint-lock-tests.exe
+passgen-checkpoint-retry-tests.exe
+passgen-tests.exe
+passgen-gui-smoke.exe
 ```
 
-The independent CLI oracles also support a Windows loader from the repository root:
-
-```sh
-python3 tests/unique_output_test.py --windows /path/to/wine64 ./dist/passgen-cli.exe
-python3 tests/large_space_test.py --windows /path/to/wine64 ./dist/passgen-cli.exe
-```
-
-## Implementation limits
-
-Uniqueness compares exact UTF-8 text, with no case folding or Unicode normalization. Prefix-free token alphabets (including character inputs) are inherently unique. Ambiguous word alphabets use exact canonical parsing, without a growing set of prior output strings or a probabilistic filter. This avoids history-dependent duplicates after resume but requires extra CPU and temporary per-candidate parsing memory for ambiguous words.
-
-The displayed candidate count is the number of raw ranks scanned, not a promise of that many accepted unique lines. In final-character word mode the engine visits each selected character length separately and filters token sequences to that exact length. Adjacent-token and class rules may further reduce the actual output.
-
-Old checkpoints retain their original token-length semantics. Ambiguous older word checkpoints cannot guarantee that already-written output is unique, so they require a new output file. This release deliberately preserves those existing files rather than rewriting them silently.
+The checkpoint integration uses only its own new temporary directory. A failure retains its artifacts for investigation; success removes them. The GUI test also creates and cleans its own outputs. The native PowerShell build/test script remains unverified on physical Windows.

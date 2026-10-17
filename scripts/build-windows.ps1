@@ -19,3 +19,12 @@ try {
     & ./passgen-gui-smoke.exe
     if ($LASTEXITCODE) { throw 'GUI smoke test failed' }
 } finally { Pop-Location }
+
+& g++ @flags -Isrc src/engine.cpp tests/checkpoint_lock_test.cpp -o dist/passgen-checkpoint-lock-tests.exe
+if ($LASTEXITCODE) { throw 'Checkpoint lock test build failed' }
+& ./dist/passgen-checkpoint-lock-tests.exe
+if ($LASTEXITCODE) { throw 'Checkpoint lock tests failed' }
+& g++ @flags -Isrc tests/checkpoint_retry_test.cpp -o dist/passgen-checkpoint-retry-tests.exe
+if ($LASTEXITCODE) { throw 'Checkpoint retry test build failed' }
+& ./dist/passgen-checkpoint-retry-tests.exe
+if ($LASTEXITCODE) { throw 'Checkpoint retry tests failed' }

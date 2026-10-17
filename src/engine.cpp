@@ -1,5 +1,6 @@
 #include "engine.hpp"
 #include "unique.hpp"
+#include "checkpoint_retry.hpp"
 #include <algorithm>
 #include <array>
 #include <filesystem>
@@ -103,6 +104,34 @@ static std::string generate(const Config& c,Index index,const UniqueOutputs& uni
  return c.prefix+body+c.suffix;
 }
 std::string candidate(const Config& c,Index index){Plan plan(c);UniqueOutputs unique(c,plan.tokens.minimum,plan.tokens.maximum);return generate(c,std::move(index),unique,plan);}
+Preview preview(const Config& c,size_t maximum){
+ total(c);Plan plan(c);UniqueOutputs unique(c,plan.tokens.minimum,plan.tokens.maximum);
+ Preview result;std::unordered_set<std::string> ranks,texts;
+ constexpr size_t budget=4096;
+ auto sample=[&](Index rank){
+  if(result.samples.size()>=maximum||result.inspected>=budget||rank>=plan.count)return;
+  if(!ranks.insert(rank.str()).second)return;
+  ++result.inspected;auto text=generate(c,std::move(rank),unique,plan);
+  if(accepts(c,text)&&texts.insert(text).second)result.samples.push_back(std::move(text));
+ };
+ // Visit token-length boundaries, including long strings of short tokens that
+ // a sequential first-1000 scan misses in mixed-length word alphabets.
+ Index segmentStart=0;
+ for(const auto& segment:plan.segments){
+  Index power=1,tokenStart=segmentStart,cycling=0;
+  for(unsigned n=1;n<=segment.tokens.maximum;++n){
+   power*=uint32_t(c.tokens.size());cycling*=uint32_t(c.tokens.size());cycling+=(n-1)%c.tokens.size();
+   if(n<segment.tokens.minimum)continue;
+   sample(tokenStart);sample(tokenStart+power-1);sample(tokenStart+cycling);
+   tokenStart+=power;
+   if(result.samples.size()>=maximum||result.inspected>=budget)break;
+  }
+  segmentStart+=segment.count;
+  if(result.samples.size()>=maximum||result.inspected>=budget)break;
+ }
+ for(uint64_t n=0;n<1000&&Index(n)<plan.count&&result.samples.size()<maximum&&result.inspected<budget;++n)sample(n);
+ return result;
+}
 bool accepts(const Config& c,const std::string& s){
  if(s.empty())return false;
  bool lo=false,up=false,di=false,sy=false;
@@ -174,9 +203,23 @@ public:
  }
 };
 static uint64_t hash(const std::string& s){uint64_t v=14695981039346656037ull;for(unsigned char b:s){v^=b;v*=1099511628211ull;}return v;}
+#ifdef _WIN32
+static std::runtime_error windowsError(const char* action,DWORD code){
+ wchar_t* buffer=nullptr;
+ DWORD size=FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER|FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS,nullptr,code,0,(LPWSTR)&buffer,0,nullptr);
+ std::string detail;
+ if(size){int bytes=WideCharToMultiByte(CP_UTF8,0,buffer,(int)size,nullptr,0,nullptr,nullptr);detail.resize(bytes);WideCharToMultiByte(CP_UTF8,0,buffer,(int)size,detail.data(),bytes,nullptr,nullptr);LocalFree(buffer);}
+ while(!detail.empty()&&(detail.back()=='\r'||detail.back()=='\n'||detail.back()==' '))detail.pop_back();
+ return std::runtime_error(std::string(action)+" (Windows error "+std::to_string(code)+(detail.empty()?"":": "+detail)+"). Keep the output and any .pgstate/.pgstate.tmp files together for recovery; check file locks, folder permissions and free disk space before Resume");
+}
+#endif
 static void replace(const fs::path& a,const fs::path& b){
 #ifdef _WIN32
- require(MoveFileExW(a.c_str(),b.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH),"Checkpoint replace failed");
+ DWORD error=retryCheckpointReplace([&]()->uint32_t{
+  if(MoveFileExW(a.c_str(),b.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH))return ERROR_SUCCESS;
+  return GetLastError();
+ },[](unsigned milliseconds){Sleep(milliseconds);});
+ if(error)throw windowsError("Checkpoint replace failed",error);
 #else
  fs::rename(a,b);auto parent=b.parent_path();int d=open(parent.empty()?".":parent.c_str(),O_RDONLY|O_DIRECTORY);require(d>=0,"Checkpoint directory open failed");int result=fsync(d);close(d);require(result==0,"Checkpoint directory flush failed");
 #endif

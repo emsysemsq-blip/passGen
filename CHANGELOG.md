@@ -1,3 +1,11 @@
+# 0.1.3
+
+- Retry transient Windows checkpoint replacement errors with bounded exponential backoff; keep the existing committed checkpoint instead of deleting it to bypass a lock.
+- Surface the original Windows error code and localized system reason when replacement still fails. Do not assert a known root cause for the user's older generic error.
+- Replace the sequential first-1000 preview with bounded representative rank sampling at token-length boundaries, reusing the prepared generation plan.
+- Reproduce temporary/persistent Windows sharing locks and validate exact recovery of the uncommitted tail; add preview regression for mixed word lengths 14..30.
+- Keep schema-3 checkpoints and generation order compatible with v0.1.2.
+
 # 0.1.2
 
 - Scan every selected final-character length in ascending order; include prefix/suffix in length and keep explicit legacy token-count mode.

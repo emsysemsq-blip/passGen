@@ -5,3 +5,6 @@ mkdir -p build
 ${CXX:-g++} -std=c++17 -O3 -Wall -Wextra -Wpedantic -pthread src/engine.cpp src/cli.cpp -o build/passgen-cli
 ${CXX:-g++} -std=c++17 -O2 -Wall -Wextra -Wpedantic -pthread -Isrc src/engine.cpp tests/engine_test.cpp -o build/passgen-tests
 ./build/passgen-tests
+
+${CXX:-g++} -std=c++17 -O2 -Wall -Wextra -Wpedantic -Isrc tests/checkpoint_retry_test.cpp -o build/checkpoint-retry-tests
+./build/checkpoint-retry-tests

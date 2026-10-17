@@ -52,5 +52,13 @@ int main(){fs::path dir=fs::temp_directory_path()/("passgen-test-"+std::to_strin
  check(uniqueWords&&seenWords.size()==wordResume.written.load(),"no duplicates across ambiguous word batches or resume");
  c={};c.tokens={"a","a","b"};c.min_length=2;c.max_length=3;pg::Progress duplicateInput;pg::run(c,(dir/"duplicate-input.txt").u8string(),false,duplicateInput);
  check(duplicateInput.written.load()==12&&duplicateInput.total.load()==12,"engine API deduplicates input before assigning ranks");
+ c={};c.tokens={"e","l","I",std::string(20,'x')};c.character_lengths=true;c.min_length=14;c.max_length=30;
+ bool oldPreviewEmpty=true;for(unsigned i=0;i<1000;++i)oldPreviewEmpty&=pg::candidate(c,i).empty();
+ check(oldPreviewEmpty,"mixed-word reproduction has no matches in its first 1000 ranks");
+ auto samples=pg::preview(c);check(!samples.samples.empty()&&samples.inspected<=4096,"representative preview finds later valid ranks within budget");
+ bool validSamples=true;std::unordered_set<std::string> sampleSet;
+ for(const auto& text:samples.samples)validSamples&=pg::characters(text)>=14&&pg::characters(text)<=30&&pg::accepts(c,text)&&sampleSet.insert(text).second;
+ check(validSamples,"representative samples satisfy final lengths, rules and uniqueness");
+ c.tokens={"a","b"};c.upper=true;auto noSamples=pg::preview(c);check(noSamples.samples.empty()&&noSamples.inspected<=4096,"impossible ASCII filter has a bounded empty preview");
  fs::remove_all(dir);std::cout<<"PASS: "<<checks<<" checks\n";return 0;
  }catch(const std::exception& e){std::cerr<<"FAIL after "<<checks<<" checks: "<<e.what()<<" | artifacts "<<dir<<"\n";return 1;}}
