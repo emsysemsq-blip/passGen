@@ -20,6 +20,9 @@ struct Progress {
 };
 std::vector<std::string> tokenize(const std::string&, bool words);
 void add_symbols(Config&, const std::string&);
+void add_emojis(Config&, const std::string&);
+void add_persian(Config&);
+void add_shift_letters(Config&);
 size_t characters(const std::string&);
 unsigned default_max_length(const Config&);
 Index total(const Config&);

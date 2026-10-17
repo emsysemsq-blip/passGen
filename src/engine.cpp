@@ -92,6 +92,22 @@ void add_symbols(Config& c,const std::string& text){
  auto selected=parseSymbols(text);if(selected.empty())return;std::unordered_set<std::string> existing(c.tokens.begin(),c.tokens.end());
  for(const auto& token:selected){if(existing.insert(token).second)c.tokens.push_back(token);}
 }
+static void mergeTokens(Config& c,const std::vector<std::string>& selected){
+ std::unordered_set<std::string> seen(c.tokens.begin(),c.tokens.end());
+ for(const auto& token:selected)if(seen.insert(token).second)c.tokens.push_back(token);
+}
+void add_emojis(Config& c,const std::string& text){
+ // Whitespace separates complete entries; never split a ZWJ/flag/modifier sequence.
+ auto selected=tokenize(text,true);
+ for(const auto& token:selected){characters(token);require(token.find('\0')==std::string::npos,"Emoji entries cannot contain NUL");}
+ mergeTokens(c,selected);
+}
+void add_persian(Config& c){mergeTokens(c,tokenize(u8"ابپتثجچحخدذرزژسشصضطظعغفقکگلمنوهیآ",false));}
+void add_shift_letters(Config& c){
+ auto original=c.tokens;std::vector<std::string> selected;
+ for(auto token:original){bool changed=false;for(char& ch:token)if(ch>='a'&&ch<='z'){ch=char(ch-'a'+'A');changed=true;}if(changed)selected.push_back(std::move(token));}
+ mergeTokens(c,selected);
+}
 Index total(const Config& c){
  require(c.tokens.size()<=100000,"Too many input tokens (maximum 100000)");
  require(!c.tokens.empty(),"Enter at least one character or word");

@@ -1,3 +1,10 @@
+# 0.1.5
+
+- Add separate manual Emoji input and CLI --emojis with whitespace-delimited complete tokens, preserving ZWJ, flag and modifier sequences.
+- Add optional Persian alphabet preset (32 letters plus آ) and Shift + letter uppercase variants for ASCII letters, including word tokens.
+- Keep exact output deduplication mandatory across every input pool and resume; no checkpoint schema change is needed.
+- Retain Unicode scalar lengths; token-length mode counts each complete emoji entry as one unit.
+
 # 0.1.4
 
 - Replace the GUI's required-ASCII-symbol checkbox with a manual Symbols edit field.

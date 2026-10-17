@@ -14,6 +14,13 @@ template<class F>static void rejects(F f,const char* msg){bool rejected=false;tr
 static std::string read(const fs::path& p){std::ifstream f(p,std::ios::binary);return std::string((std::istreambuf_iterator<char>(f)),{});}
 static void append(const fs::path& p,const std::string& text){std::ofstream f(p,std::ios::app|std::ios::binary);f<<text;}
 int main(){fs::path dir=fs::temp_directory_path()/("passgen-test-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));fs::create_directories(dir);try{
+ pg::Config extras;extras.tokens={"a","A"};pg::add_shift_letters(extras);check(extras.tokens.size()==2,"shift alphabet stays unique");
+ extras.tokens={"ab",u8"بa"};pg::add_shift_letters(extras);check(extras.tokens==std::vector<std::string>({"ab",u8"بa","AB",u8"بA"}),"shift adds uppercase words without changing Persian");
+ extras.tokens={u8"ی"};pg::add_persian(extras);check(extras.tokens.size()==33,"Persian preset has 32 letters plus alef madda without duplicates");
+ extras={};pg::add_emojis(extras,u8"👩‍💻 👍🏽 🇮🇷 👩‍💻");check(extras.tokens==std::vector<std::string>({u8"👩‍💻",u8"👍🏽",u8"🇮🇷"}),"manual emoji preserves sequences and deduplicates entries");
+ extras.max_length=2;extras.threads=2;pg::Progress ep;pg::run(extras,(dir/"emoji.txt").u8string(),false,ep);check(ep.written==12&&read(dir/"emoji.txt").find(u8"👩‍💻👍🏽\n")!=std::string::npos,"complete emoji combinations stay intact");
+ extras={};pg::add_emojis(extras,u8"😀 😀😀");extras.max_length=2;pg::Progress ea;pg::run(extras,(dir/"emoji-alias.txt").u8string(),false,ea);check(ea.written==4,"ambiguous emoji aliases never produce duplicate lines");
+ extras={};pg::add_emojis(extras,u8"👩‍💻");extras.character_lengths=true;extras.min_length=extras.max_length=3;pg::Progress ec;ec.stop=true;pg::run(extras,(dir/"emoji-resume.txt").u8string(),false,ec);pg::Progress er;pg::run({},(dir/"emoji-resume.txt").u8string(),true,er);check(read(dir/"emoji-resume.txt")==u8"👩‍💻\n","emoji sequence and scalar length preserved on resume");
  pg::Config c;c.tokens=pg::tokenize("aab",false);c.max_length=2;
  check(c.tokens.size()==2,"deduplicate characters");check(pg::total(c)==6,"complete count");check(pg::candidate(c,0)=="a"&&pg::candidate(c,5)=="bb","index boundaries");
  pg::Progress p;pg::run(c,(dir/"one.txt").u8string(),false,p);check(read(dir/"one.txt")=="a\nb\naa\nab\nba\nbb\n","exact order, no conditions");check(p.scanned.load()==6&&p.written==6&&p.bytes==16,"progress counters");

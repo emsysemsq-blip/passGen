@@ -1,3 +1,17 @@
+# v0.1.5 validation
+
+- Linux engine suite: 61 checks passed, including complete emoji sequence preservation, Persian alphabet uniqueness, uppercase word variants, emoji aliases and checkpoint replay with Unicode scalar lengths.
+- CLI: 5 independent exhaustive input-pool set oracles passed with no duplicate rows and unchanged completed resume (tests/extra_inputs_test.py).
+- Windows x64 GUI, CLI and test executables cross-compiled successfully using the existing MinGW toolchain.
+- Wine: Windows engine suite passed all 61 checks. GUI integration passed, including the new combined pool (37 unique tokens), complete ZWJ output, Persian letters and uppercase variants, plus existing symbols, large-space preview and stop/resume tests.
+- Default lengths count Unicode scalars, including ZWJ and modifiers. Whitespace-delimited manual Emoji entries remain complete generation tokens; token-length mode treats each as one unit. Emoji input is literal and does not enforce Unicode emoji categories.
+- Shift + letter adds ASCII uppercase counterparts (whole-word uppercase in word mode), not a Persian keyboard Shift mapping. Persian preset contains 32 letters plus آ. Exact line deduplication remains mandatory.
+- Existing PASSGEN_3 checkpoints persist the merged alphabet; Resume ignores current form edits.
+
+Native Windows 10/11, font rendering on the user's machine and billion-candidate throughput have not been verified. Wine checks are compatibility tests, not native Windows testing.
+
+Previous validation follows for historical context.
+
 # PassGen 0.1.4 — validation
 
 The Symbols checkbox is replaced by a manual text field. The user's explicit choice is implemented: typed symbols extend the input alphabet and are optional in each password. There is no new required-symbol rule or global punctuation expansion.
