@@ -22,6 +22,18 @@ int main(int argc,char**){PROCESS_INFORMATION process{};HWND h=nullptr;std::file
  auto field=[&](int id,const std::wstring& s){require(SetWindowTextW(GetDlgItem(h,id),s.c_str()),"Set GUI field");};
  auto click=[&](int id){SendMessageW(GetDlgItem(h,id),BM_CLICK,0,0);};
  auto wait=[&](const wchar_t* token){for(int i=0;i<2400;++i){if(get(GetDlgItem(h,Status)).find(token)!=std::wstring::npos)return;std::this_thread::sleep_for(std::chrono::milliseconds(25));}throw std::runtime_error("GUI operation timed out");};
+ // Queue real key messages through the application's dialog message loop.
+ field(Input,L"FirstWord");HWND input=GetDlgItem(h,Input);
+ SendMessageW(input,EM_SETSEL,9,9);auto beforeEnter=get(GetDlgItem(h,Status));
+ require(GetWindowLongPtrW(input,GWL_STYLE)&ES_WANTRETURN,"Input accepts plain Enter");
+ PostMessageW(input,WM_KEYDOWN,VK_RETURN,1);PostMessageW(input,WM_KEYUP,VK_RETURN,0xc0000001);
+ std::this_thread::sleep_for(std::chrono::milliseconds(200));
+ require(get(input)==L"FirstWord\r\n","Plain Enter inserts a new line through IsDialogMessage");
+ for(wchar_t c:std::wstring(L"SecondWord"))PostMessageW(input,WM_CHAR,c,1);
+ std::this_thread::sleep_for(std::chrono::milliseconds(600));
+ require(get(input)==L"FirstWord\r\nSecondWord","Typing continues on the next line");
+ require(SendMessageW(GetDlgItem(h,TokenList),LVM_GETITEMCOUNT,0,0)==2,"New manually typed line updates token table");
+ require(get(GetDlgItem(h,Status))==beforeEnter&&IsWindowEnabled(GetDlgItem(h,Start)),"Enter does not start generation");
  require(SendMessageW(GetDlgItem(h,Words),BM_GETCHECK,0,0)==BST_CHECKED,"Whole-word input defaults on");SendMessageW(GetDlgItem(h,Words),BM_SETCHECK,BST_UNCHECKED,0);
  require(SendMessageW(GetDlgItem(h,Compute),CB_GETCURSEL,0,0)==0,"Automatic CPU/GPU selection defaults on");
  require(SendMessageW(GetDlgItem(h,Resource70),BM_GETCHECK,0,0)==BST_CHECKED,"Auto 70 defaults on");require(!IsWindowEnabled(GetDlgItem(h,Threads)),"Auto mode controls worker count");

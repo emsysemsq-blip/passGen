@@ -1,3 +1,7 @@
+# v0.1.14 input keyboard regression
+
+Windows GUI rebuilt with MinGW. Full GUI smoke suite passed under Wine, including queued Enter keydown/up through the application dialog loop, insertion of CRLF, subsequent typing on the new line, two refreshed token-table rows and no generation triggered by Enter. This is Wine validation, not a native Windows run. Engine behavior and checkpoint schema are unchanged.
+
 # v0.1.13 validation
 
 - Native engine62 and resource-engine286 checks passed. Actual OpenCL backend76 and engine integration70 checks passed using the explicit PoCL CPU test device. Production does not select that CPU as a GPU; no physical GPU was available.

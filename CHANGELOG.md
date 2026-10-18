@@ -1,3 +1,7 @@
+# 0.1.14
+
+- Make plain Enter insert a new line in the Input editor instead of invoking the default Generate button. Verify keyboard-message handling, typing on the next line and token-table refresh.
+
 # 0.1.13
 
 - Restore the buffered flat renderer for direct jobs whose every combination is provably legal. Retain prefix pruning for caps, adjacency, ambiguous words and other constrained cases; do not generate rejected passwords to regain speed.

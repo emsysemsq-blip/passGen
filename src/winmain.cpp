@@ -82,7 +82,7 @@ void start(bool resume){if(running)return;pg::Config c;if(!resume){c=config();sh
 LRESULT CALLBACK proc(HWND h,UINT msg,WPARAM wp,LPARAM lp){switch(msg){case WM_CREATE:{window=h;NONCLIENTMETRICSW metrics{};metrics.cbSize=sizeof(metrics);SystemParametersInfoW(SPI_GETNONCLIENTMETRICS,sizeof(metrics),&metrics,0);font=CreateFontIndirectW(&metrics.lfMessageFont);
  label(L"PassGen " PASSGEN_VERSION_W L" | Native Windows wordlist generator",20,16,740);
  label(L"Input words or characters (whole-word mode keeps each entry intact):",20,49,740);
- control(L"EDIT",L"",Input,20,74,350,101,WS_TABSTOP|ES_MULTILINE|ES_AUTOVSCROLL|WS_VSCROLL);
+ control(L"EDIT",L"",Input,20,74,350,101,WS_TABSTOP|ES_MULTILINE|ES_WANTRETURN|ES_AUTOVSCROLL|WS_VSCROLL);
  control(WC_LISTVIEWW,L"",TokenList,400,74,360,101,WS_TABSTOP|LVS_REPORT|LVS_SINGLESEL|LVS_SHOWSELALWAYS);
  ListView_SetExtendedListViewStyle(item(TokenList),LVS_EX_FULLROWSELECT|LVS_EX_DOUBLEBUFFER);
  LVCOLUMNW column{};column.mask=LVCF_TEXT|LVCF_WIDTH;column.pszText=const_cast<wchar_t*>(L"Input token");column.cx=225;ListView_InsertColumn(item(TokenList),0,&column);column.pszText=const_cast<wchar_t*>(L"Maximum / row");column.cx=110;ListView_InsertColumn(item(TokenList),1,&column);
