@@ -1,3 +1,9 @@
+# 0.1.15
+
+- Reuse a high-resolution Windows waitable timer per worker when supported, reducing oversleep without changing the system timer resolution; keep the standard sleep fallback.
+- Apply bounded checkpoint aggregation to character and legacy jobs too. Retain first/final/Stop/quota commits, durable output-before-checkpoint order and exact crash-tail replay.
+- Keep the 70% automatic policy, bounded RAM buffers, exact deduplication, prefix pruning and conditional OpenCL selection. Larger buffers and less frequent CPU accounting were evaluated and rejected after measured regressions.
+
 # 0.1.14
 
 - Make plain Enter insert a new line in the Input editor instead of invoking the default Generate button. Verify keyboard-message handling, typing on the next line and token-table refresh.

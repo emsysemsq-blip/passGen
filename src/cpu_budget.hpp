@@ -38,6 +38,22 @@ class CpuBudget {
   return uint64_t(value.tv_sec)*1000000000ull+uint64_t(value.tv_nsec);
 #endif
  }
+ static void pause(double seconds){
+#ifdef _WIN32
+  // Reuse one high-resolution timer per persistent worker (Windows 10+).
+  // Older systems retain the standard sleep fallback.
+  struct Timer {
+   HANDLE handle=CreateWaitableTimerExW(nullptr,nullptr,0x00000002,TIMER_MODIFY_STATE|SYNCHRONIZE);
+   ~Timer(){if(handle)CloseHandle(handle);}
+  };
+  thread_local Timer timer;
+  if(timer.handle){
+   LARGE_INTEGER due{};due.QuadPart=-std::max<LONGLONG>(1,LONGLONG(seconds*10000000));
+   if(SetWaitableTimer(timer.handle,&due,0,nullptr,nullptr,FALSE)&&WaitForSingleObject(timer.handle,100)==WAIT_OBJECT_0)return;
+  }
+#endif
+  std::this_thread::sleep_for(std::chrono::duration<double>(seconds));
+ }
 public:
  CpuBudget(double share,const std::atomic<bool>& stopped):fraction(share),stop(stopped),
   initial_cpu(share<1?cpu_nanoseconds():0),initial_wall(std::chrono::steady_clock::now()){}
@@ -47,7 +63,7 @@ public:
   while(!stop.load()){
    double elapsed=std::chrono::duration<double>(std::chrono::steady_clock::now()-initial_wall).count();
    if(elapsed>=required)return;
-   std::this_thread::sleep_for(std::chrono::duration<double>(std::min(0.01,required-elapsed)));
+   pause(std::min(0.01,required-elapsed));
   }
  }
 };

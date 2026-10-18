@@ -1,0 +1,14 @@
+{
+  "baseline": {
+    "fsync": 51,
+    "rename": 17,
+    "cli": "Complete: scanned=16777216 written=0 bytes=0 seconds=0.112143",
+    "empty_output": true
+  },
+  "candidate": {
+    "fsync": 12,
+    "rename": 4,
+    "cli": "Complete: scanned=16777216 written=0 bytes=0 seconds=0.103342",
+    "empty_output": true
+  }
+}

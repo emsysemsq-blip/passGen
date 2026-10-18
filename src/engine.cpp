@@ -647,7 +647,7 @@ void run(Config c,const std::string& output,bool resume,Progress& progress,const
  else {file.flush();save(cp,s);}
  progress.disk_limit=false;progress.active_workers=c.threads;progress.buffer_bytes=c.resource_percent?limits.buffer_bytes_per_worker:4*1024*1024;progress.disk_budget_bytes=c.resource_percent?limits.disk_budget_bytes:UINT64_MAX;
  progress.total=count;progress.scanned=s.next;progress.written=s.lines;progress.bytes=s.offset;if(loaded)loaded(c);
- // Bounded 4 MiB worker buffers, persistent workers, and identical rank order.
+ // RAM-budgeted buffers, persistent workers, and identical rank order.
  uint64_t chunk=std::max<size_t>(1,std::min<size_t>(unique.needsCanonicalization()?8192:262144,size_t(buffer/maxLine)));
  const uint64_t initialOffset=s.offset;
  const double cpuFraction=c.resource_percent?limits.cpu_fraction:1;
@@ -714,7 +714,7 @@ void run(Config c,const std::string& output,bool resume,Progress& progress,const
   // Sparse pruned blocks must not force a durable replacement per few lines.
   // Only metadata is accumulated; text buffers are written and released above.
   // A crash replays any unsaved tail from the previous durable cursor.
-  if(!c.direct_combinations||firstCommit||progress.stop||s.next==count||s.offset-lastSavedOffset>=512*1024
+  if(firstCommit||progress.stop||s.next==count||s.offset-lastSavedOffset>=512*1024
      ||pendingConstructed>=16384||pendingWaves>=256||std::chrono::steady_clock::now()-lastCommit>=std::chrono::milliseconds(50))commit();
  }
  // Stop may arrive just after the last threshold check, before the loop guard.

@@ -1,0 +1,154 @@
+{
+  "executables": {
+    "baseline": "597bb1210685f8ddf580df74e4085e592a9af75a30428f4439f53616748beccd",
+    "candidate": "e04588cbc2d187077c182a0e44a48290d97ce5bce90521cca7c961504df5ae72"
+  },
+  "scope": "Native Linux cloud CPU, automatic 70% resources, durable output; not Windows or GPU performance.",
+  "cases": [
+    {
+      "case": "sparse_characters",
+      "seconds": {
+        "baseline": [
+          0.109389483999621,
+          0.09414473899960285,
+          0.09168370999941544
+        ],
+        "candidate": [
+          0.10924102399985713,
+          0.11201278299995465,
+          0.08941405499990651
+        ]
+      },
+      "medians": {
+        "baseline": 0.09414473899960285,
+        "candidate": 0.10924102399985713
+      },
+      "speedup": 0.8618075476821416,
+      "bytes_lines_sha256": [
+        0,
+        0,
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "resources": {
+        "baseline": "Resources: 70% auto | workers=3 | buffer/worker=4194304 bytes | disk budget=12510278860 | Compute: CPU selected",
+        "candidate": "Resources: 70% auto | workers=3 | buffer/worker=4194304 bytes | disk budget=12510278860 | Compute: CPU selected"
+      }
+    },
+    {
+      "case": "characters",
+      "seconds": {
+        "baseline": [
+          0.10818468700017547,
+          0.10284397400027956,
+          0.11321210000005522
+        ],
+        "candidate": [
+          0.16392815000017436,
+          0.12509254799988412,
+          0.11077550699974381
+        ]
+      },
+      "medians": {
+        "baseline": 0.10818468700017547,
+        "candidate": 0.12509254799988412
+      },
+      "speedup": 0.8648371843882794,
+      "bytes_lines_sha256": [
+        218103808,
+        16777216,
+        "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743"
+      ],
+      "resources": {
+        "baseline": "Resources: 70% auto | workers=3 | buffer/worker=4194304 bytes | disk budget=12510278860 | Compute: CPU selected",
+        "candidate": "Resources: 70% auto | workers=3 | buffer/worker=4194304 bytes | disk budget=12510278860 | Compute: CPU selected"
+      }
+    },
+    {
+      "case": "words",
+      "seconds": {
+        "baseline": [
+          0.10427604600045015,
+          0.15951428299922554,
+          0.14126503799980128
+        ],
+        "candidate": [
+          0.11781894199975795,
+          0.1151028430003862,
+          0.15503879100015183
+        ]
+      },
+      "medians": {
+        "baseline": 0.14126503799980128,
+        "candidate": 0.11781894199975795
+      },
+      "speedup": 1.1990010740385997,
+      "bytes_lines_sha256": [
+        218103808,
+        16777216,
+        "e6b7eaddfcc2b23f2e5d97132e259d919d008a35a8cc4c131f502e560e5ef743"
+      ],
+      "resources": {
+        "baseline": "Resources: 70% auto | workers=3 | buffer/worker=4194304 bytes | disk budget=12510255923 | Compute: CPU: direct word combinations; invalid prefixes skipped",
+        "candidate": "Resources: 70% auto | workers=3 | buffer/worker=4194304 bytes | disk budget=12510278860 | Compute: CPU: direct word combinations; invalid prefixes skipped"
+      }
+    },
+    {
+      "case": "capped",
+      "seconds": {
+        "baseline": [
+          0.1331672999995135,
+          0.15432077099922026,
+          0.15903019899997162
+        ],
+        "candidate": [
+          0.14801017699937802,
+          0.14868240500072716,
+          0.172206911000103
+        ]
+      },
+      "medians": {
+        "baseline": 0.15432077099922026,
+        "candidate": 0.14868240500072716
+      },
+      "speedup": 1.0379222141212037,
+      "bytes_lines_sha256": [
+        85207707,
+        6554439,
+        "845f0bad15f822e345da129293c697face81ba8c4ed7f4a132d47143d2c67fd1"
+      ],
+      "resources": {
+        "baseline": "Resources: 70% auto | workers=3 | buffer/worker=4194304 bytes | disk budget=12510278860 | Compute: CPU: direct word combinations; invalid prefixes skipped",
+        "candidate": "Resources: 70% auto | workers=3 | buffer/worker=4194304 bytes | disk budget=12510278860 | Compute: CPU: direct word combinations; invalid prefixes skipped"
+      }
+    },
+    {
+      "case": "filtered_characters",
+      "seconds": {
+        "baseline": [
+          0.15317931299978227,
+          0.15135400500003016,
+          0.17483871900003578
+        ],
+        "candidate": [
+          0.13727393399949506,
+          0.18033439499959059,
+          0.18864859099994646
+        ]
+      },
+      "medians": {
+        "baseline": 0.15317931299978227,
+        "candidate": 0.18033439499959059
+      },
+      "speedup": 0.8494181767162611,
+      "bytes_lines_sha256": [
+        94058496,
+        10450944,
+        "643dea0fc7da3abbc26f7ccf98bf1371f3134d8036bdec8ac15ad179d10f6afc"
+      ],
+      "resources": {
+        "baseline": "Resources: 70% auto | workers=3 | buffer/worker=4194304 bytes | disk budget=12510278860 | Compute: CPU selected",
+        "candidate": "Resources: 70% auto | workers=3 | buffer/worker=4194304 bytes | disk budget=12510278860 | Compute: CPU selected"
+      }
+    }
+  ]
+}

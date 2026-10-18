@@ -1,3 +1,7 @@
+# v0.1.15 resource overhead
+
+See benchmarks/v0.1.15/resource-comparison.json for alternating three-run automatic-70% comparisons with byte/line/SHA256 parity. Results are mixed; no general throughput improvement is established on this cloud filesystem. The word traversal and RAM plan are unchanged. A separate instrumented synthetic sparse-character job reduced fsync calls from 51 to 12 and checkpoint replacements from 17 to 4 (checkpoint-syscalls.json). Windows high-resolution timers require native Windows measurement; Wine functional tests do not establish speed.
+
 # PassGen v0.1.13 speed regression fix
 
 Three alternating baseline/candidate repetitions, four CPU workers, manual resources, fresh normal file output through process exit including durable checkpoint/output writes. Hashing is outside timing. All paired files match by SHA256, byte count and independently expected line count.

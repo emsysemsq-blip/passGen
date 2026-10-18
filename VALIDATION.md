@@ -1,3 +1,15 @@
+# v0.1.15 resource overhead
+
+- Final native resource-engine suite: 286 checks passed. CPU target 25% measured 25.2%, target 70% measured 69.8% process CPU/wall in a single-core synthetic fixture. Stop under a tiny CPU quota and exact Resume passed.
+- Direct prefix-pruning suite passed, including impossible branches, 128-bit ranks and exact multiworker Stop/crash/Resume. CPU traversal was retained unchanged after rejecting an accounting-interval experiment.
+- Range comparison: 38 baseline cases passed. Large-space 2^64/65/128 and legacy upgrades passed. Unique output: 16 cases plus 64,512 unique length-10..15 lines passed.
+- Windows MinGW builds completed. Wine GUI smoke and 62 engine checks passed before the timer-only addition. Final Wine GUI smoke passed; final Wine resource suite passed 286 checks (25% target:21.1%,70% target:44.0%). Wine does not establish native Windows timer performance. No native Windows or physical GPU speed measurement.
+- Windows workers reuse a high-resolution waitable timer if available, with standard sleep fallback. The process does not modify the system timer resolution. CPU accounting cadence, target and RAM buffer plan are unchanged.
+- Character/legacy checkpoint writes use existing bounded aggregation; first/final/Stop/quota commits remain mandatory. Output-before-checkpoint ordering and crash-tail replay are unchanged.
+- Instrumented sparse synthetic character job: fsync calls reduced from 51 to 12, checkpoint renames from 17 to 4, with the same 16,777,216 covered ranks and empty valid output. See checkpoint-syscalls.json.
+- Final automatic-resource wall-time comparison was mixed: some cases slower, some faster. These measurements do not demonstrate a general throughput increase.
+- Reproduce native automatic-70% comparisons with tests/resource_speed_benchmark.py; see benchmarks/v0.1.15/resource-comparison.json. Short cloud filesystem timings vary and are not a universal speed guarantee.
+
 # v0.1.14 input keyboard regression
 
 Windows GUI rebuilt with MinGW. Full GUI smoke suite passed under Wine, including queued Enter keydown/up through the application dialog loop, insertion of CRLF, subsequent typing on the new line, two refreshed token-table rows and no generation triggered by Enter. This is Wine validation, not a native Windows run. Engine behavior and checkpoint schema are unchanged.
