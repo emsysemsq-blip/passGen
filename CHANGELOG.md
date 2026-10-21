@@ -128,3 +128,11 @@
 - Bounded parallel generation, deterministic output, durable checkpoints and resume.
 - UTF-8 output and Unicode Windows paths/CLI arguments.
 - Separate source and Windows binary archives with checksums and validation notes.
+# 0.1.16
+
+- Add explicit Before / After / Middle generation around known text. Disable and ignore inactive known fields and allow ordinary generation with known parts switched off.
+- Allow independent symbol, emoji and Persian pools with an empty main editor. Support fixed known text without any variable tokens as one unique result, using final Unicode length bounds.
+- Keep Require boxes as presence constraints; report impossible source/class combinations and impossible length bounds in the GUI. Blank GUI maximum uses an input-derived default at least as large as an explicit minimum.
+- Preserve PASSGEN_7, exact deduplication, prefix pruning, resource budgets and durable Stop/crash/Resume. Fixed-only jobs use the same checkpoint/output commit path and skip GPU initialization.
+- Add native fixed-only and placement regressions plus Windows GUI coverage for all placements, inactive fields, independent sources and saved known-text settings.
+

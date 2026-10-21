@@ -194,3 +194,10 @@ python3 tests/manual_symbols_test.py --windows /path/to/wine64 ./dist/passgen-cl
 ```
 
 The CLI and GUI tests use their own temporary output files, and clean them after success. The native PowerShell build/test script remains unverified on physical Windows.
+# v0.1.16 known parts and independent inputs
+
+- Native Linux build and tests passed: 62 engine checks, fixed-only/placement regressions, checkpoint retries, resource planning, 286 resource-engine checks and direct prefix-pruning/Stop/crash/Resume tests.
+- New regressions exercise fixed-only inputs in character/token length modes, direct/legacy policies and all three compute preferences; Unicode, final-length bounds, active class rules, pre-output Stop, crash-tail truncation and idempotent Resume passed. Fixed-only jobs deliberately use CPU.
+- MinGW Windows x64 GUI, CLI and test executables built successfully. Expanded GUI smoke tests were compiled, but not executed for this release: virtual display creation was blocked by the environment and the escalation request was cancelled. Native Windows UI, physical GPU and Microsoft Defender were not tested here.
+- Actual OpenCL execution was skipped because no usable GPU was detected. CPU fallback tests passed. PASSGEN_7 remains unchanged.
+

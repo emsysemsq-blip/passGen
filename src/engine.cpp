@@ -42,6 +42,7 @@ static size_t scalarWidth(const std::string& text,size_t i){
 }
 size_t characters(const std::string& text){size_t count=0;for(size_t i=0;i<text.size();++count)i+=scalarWidth(text,i);return count;}
 unsigned default_max_length(const Config& c){
+ if(c.tokens.empty())return unsigned(std::max<size_t>(1,std::min<size_t>(128,characters(c.prefix)+characters(c.suffix))));
  if(!c.character_lengths)return unsigned(c.tokens.size());
  size_t longest=1;for(const auto& token:c.tokens)longest=std::max(longest,characters(token));
  size_t defaultLength=longest*c.tokens.size()+characters(c.prefix)+characters(c.suffix);
@@ -49,6 +50,7 @@ unsigned default_max_length(const Config& c){
 }
 struct Bounds {unsigned minimum=1,maximum=0;};
 static Bounds bounds(const Config& c,unsigned finalLength=0){
+ if(c.tokens.empty())return {0,0};
  if(!c.character_lengths)return {c.min_length,c.max_length};
  size_t affix=characters(c.prefix)+characters(c.suffix);
  unsigned minLength=finalLength?finalLength:c.min_length,maxLength=finalLength?finalLength:c.max_length;
@@ -65,6 +67,11 @@ struct Plan {
  std::vector<Segment> segments;
  Index count;
  explicit Plan(const Config& c):tokens(bounds(c)){
+  if(c.tokens.empty()){
+   const auto length=characters(c.prefix)+characters(c.suffix);
+   if(length&&length>=c.min_length&&length<=c.max_length){count=1;segments.push_back({unsigned(length),{0,0},1});}
+   return;
+  }
   std::vector<Index> powers(tokens.maximum+1,1);
   for(unsigned n=1;n<=tokens.maximum;++n){powers[n]=powers[n-1];powers[n]*=uint32_t(c.tokens.size());}
   auto add=[&](unsigned chars,Bounds r){Index subtotal;for(unsigned n=r.minimum;n<=r.maximum;++n)subtotal+=powers[n];if(subtotal){segments.push_back({chars,r,subtotal});count+=subtotal;}};
@@ -191,16 +198,19 @@ Index total(const Config& c){
  require(unsigned(c.compute_mode)<=unsigned(ComputeMode::GpuPreferred),"Invalid compute mode");
  require(c.resource_percent<=100,"Resource percentage must be 0..100");
  require(c.tokens.size()<=100000,"Too many input tokens (maximum 100000)");
- require(!c.tokens.empty(),"Enter at least one character or word");
+ require(!c.tokens.empty()||!c.prefix.empty()||!c.suffix.empty(),"Enter input words/characters, symbols, emoji, Persian letters, or a known part");
  for(const auto& limit:c.token_limits){require(limit.second>=1&&limit.second<=10,"Token limit must be 1..10 (omit for Always)");require(std::find(c.tokens.begin(),c.tokens.end(),limit.first)!=c.tokens.end(),"Limited token is not in the input alphabet");}
  require(c.min_length>=1 && c.max_length>=c.min_length && c.max_length<=128,"Length must be 1..128 and minimum <= maximum");
  require(c.threads>=1 && c.threads<=32,"Worker count must be 1..32");
  size_t longest=0;for(auto& s:c.tokens){require(!s.empty()&&s.find_first_of("\r\n") == std::string::npos && s.find('\0')==std::string::npos,"Invalid token");longest=std::max(longest,s.size());}
  require(longest<=4096 && c.prefix.size()<=4096 && c.suffix.size()<=4096,"Token, prefix or suffix too long");
  require(c.prefix.find_first_of("\r\n")==std::string::npos && c.suffix.find_first_of("\r\n")==std::string::npos,"Prefix/suffix cannot contain newlines");
+ require(c.prefix.find('\0')==std::string::npos&&c.suffix.find('\0')==std::string::npos,"Known parts cannot contain NUL");
+ characters(c.prefix);characters(c.suffix);
  return Plan(c).count;
 }
 static std::string generate(const Config& c,Index index,const UniqueOutputs& unique,const Plan& plan){
+ if(c.tokens.empty()){require(index<plan.count,"Candidate index out of range");return c.prefix+c.suffix;}
  const Segment* segment=nullptr;
  for(const auto& part:plan.segments){if(index<part.count){segment=&part;break;}index-=part.count;}
  require(segment!=nullptr,"Candidate index out of range");
@@ -220,6 +230,7 @@ std::string candidate(const Config& c,Index index){Plan plan(c);UniqueOutputs un
 Preview preview(const Config& c,size_t maximum){
  total(c);Plan plan(c);UniqueOutputs unique(c,plan.tokens.minimum,plan.tokens.maximum);
  Preview result;std::unordered_set<std::string> ranks,texts;
+ if(c.tokens.empty()){if(plan.count&&maximum){result.inspected=1;auto text=c.prefix+c.suffix;if(accepts(c,text))result.samples.push_back(std::move(text));}return result;}
  if(c.direct_combinations){
   DirectRules rules(c);Index rank=0;std::atomic<bool> stop{false};
   while(result.samples.size()<maximum&&result.inspected<4096){
@@ -388,8 +399,8 @@ static unsigned classes(const std::string& text){
 struct Alphabet {
  std::vector<unsigned> masks;std::vector<size_t> chars;
  unsigned required,affixMask,commonMask=15;size_t affixChars,width;bool fixed,uniformChars;std::vector<unsigned> limits;bool limited=false;std::unique_ptr<DirectRules> direct;
- explicit Alphabet(const Config& c):required(unsigned(c.lower)|(unsigned(c.upper)<<1)|(unsigned(c.digit)<<2)|(unsigned(c.symbol)<<3)),affixMask(classes(c.prefix)|classes(c.suffix)),affixChars(c.character_lengths?characters(c.prefix)+characters(c.suffix):0),width(c.tokens.front().size()),fixed(true),uniformChars(true){
-  if(c.direct_combinations)direct.reset(new DirectRules(c));
+ explicit Alphabet(const Config& c):required(unsigned(c.lower)|(unsigned(c.upper)<<1)|(unsigned(c.digit)<<2)|(unsigned(c.symbol)<<3)),affixMask(classes(c.prefix)|classes(c.suffix)),affixChars(c.character_lengths?characters(c.prefix)+characters(c.suffix):0),width(c.tokens.empty()?0:c.tokens.front().size()),fixed(true),uniformChars(true){
+  if(c.direct_combinations&&!c.tokens.empty())direct.reset(new DirectRules(c));
   for(const auto& token:c.tokens){auto limit=c.token_limits.find(token);limits.push_back(limit==c.token_limits.end()?0:limit->second);limited|=limits.back()!=0;masks.push_back(classes(token));commonMask&=masks.back();chars.push_back(c.character_lengths?characters(token):0);fixed&=token.size()==width;uniformChars&=chars.back()==chars.front();}
  }
 };
@@ -448,6 +459,12 @@ static RangeResult generateDirectRange(const Config& c,Index begin,uint64_t span
 }
 
 static RangeResult generateRange(const Config& c,Index begin,uint64_t span,const UniqueOutputs& unique,const Plan& plan,const Alphabet& alphabet,size_t maxLine,const std::atomic<bool>& stop,double cpu_fraction,uint64_t byte_limit=UINT64_MAX){
+ if(c.tokens.empty()){
+  RangeResult result;if(stop||!span||begin>=plan.count)return result;
+  auto line=c.prefix+c.suffix;
+  if(accepts(c,line)){line+='\n';if(line.size()>byte_limit){result.quota_hit=true;return result;}result.text=std::move(line);result.lines=1;result.constructed=1;}
+  result.scanned=1;return result;
+ }
  // Every leaf is legal in this proven uniform case. Use the flat renderer;
  // there is no rejected combination to generate or filter.
  const bool directFlat=alphabet.direct&&alphabet.fixed&&!alphabet.limited&&!c.no_repeat&&!unique.needsCanonicalization()
@@ -594,7 +611,8 @@ void run(Config c,const std::string& output,bool resume,Progress& progress,const
  progress.compute_status.set(c.direct_combinations?"CPU: direct word combinations; invalid prefixes skipped":"CPU selected");
  Alphabet alphabet(c);std::unique_ptr<GpuEngine> gpu;uint64_t gpuResultLimit=0;
  const size_t testCap=gpu_test?gpu_test->max_batch_candidates:0;
- if(c.compute_mode!=ComputeMode::Cpu&&s.next<count&&!progress.stop){
+ if(c.tokens.empty())progress.compute_status.set("CPU: known parts only; one unique result");
+ if(!c.tokens.empty()&&c.compute_mode!=ComputeMode::Cpu&&s.next<count&&!progress.stop){
   progress.compute_status.set("Inspecting OpenCL GPU and driver...");
   if(c.direct_combinations)progress.compute_status.set("CPU: direct word combinations; invalid prefixes skipped");
   else if(alphabet.limited)progress.compute_status.set("CPU: per-token repetition limits");

@@ -13,6 +13,10 @@ if ($LASTEXITCODE) { throw 'CLI build failed' }
 if ($LASTEXITCODE) { throw 'Test build failed' }
 & ./dist/passgen-tests.exe
 if ($LASTEXITCODE) { throw 'Tests failed' }
+& g++ @flags -Isrc src/engine.cpp src/gpu.cpp tests/known_parts_test.cpp -o dist/passgen-known-parts-tests.exe
+if ($LASTEXITCODE) { throw 'Known-parts test build failed' }
+& ./dist/passgen-known-parts-tests.exe
+if ($LASTEXITCODE) { throw 'Known-parts tests failed' }
 
 & g++ @flags -Isrc tests/gui_smoke.cpp -o dist/passgen-gui-smoke.exe
 if ($LASTEXITCODE) { throw 'GUI smoke test build failed' }

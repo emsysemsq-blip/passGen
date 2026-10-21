@@ -8,6 +8,7 @@ resource_compiler="${WINDRES_WINDOWS:-x86_64-w64-mingw32-windres}"
 "$compiler" -std=c++17 -O3 -Wall -Wextra -Wpedantic -pthread -static -static-libgcc -static-libstdc++ -municode -mwindows src/engine.cpp src/gpu.cpp src/winmain.cpp dist/passgen-res.o -Wl,--no-insert-timestamp -lcomdlg32 -lcomctl32 -o dist/PassGen.exe
 "$compiler" -std=c++17 -O3 -Wall -Wextra -Wpedantic -pthread -static -static-libgcc -static-libstdc++ -municode src/engine.cpp src/gpu.cpp src/cli.cpp -Wl,--no-insert-timestamp -o dist/passgen-cli.exe
 "$compiler" -std=c++17 -O2 -pthread -static -static-libgcc -static-libstdc++ -Isrc src/engine.cpp src/gpu.cpp tests/engine_test.cpp -o dist/passgen-tests.exe
+"$compiler" -std=c++17 -O2 -pthread -static -static-libgcc -static-libstdc++ -Isrc src/engine.cpp src/gpu.cpp tests/known_parts_test.cpp -o dist/passgen-known-parts-tests.exe
 
 "$compiler" -std=c++17 -O2 -pthread -static -static-libgcc -static-libstdc++ -Isrc tests/gui_smoke.cpp -o dist/passgen-gui-smoke.exe
 

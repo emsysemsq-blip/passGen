@@ -71,6 +71,7 @@ Build-Program -Name 'PassGen' -Source 'src/winmain.cpp' -Subsystem 'WINDOWS' `
     -Libraries @('user32.lib', 'gdi32.lib', 'comdlg32.lib', 'comctl32.lib') -UsesGuiResource $true
 Build-Program -Name 'passgen-cli' -Source 'src/cli.cpp'
 Build-Program -Name 'passgen-tests' -Source 'tests/engine_test.cpp'
+Build-Program -Name 'passgen-known-parts-tests' -Source 'tests/known_parts_test.cpp'
 Build-Program -Name 'passgen-direct-combinations-tests' -Source 'tests/direct_combinations_test.cpp'
 Build-Program -Name 'passgen-resource-engine-tests' -Source 'tests/resource_engine_test.cpp'
 Build-Program -Name 'passgen-checkpoint-lock-tests' -Source 'tests/checkpoint_lock_test.cpp'
@@ -87,6 +88,7 @@ Push-Location dist
 try {
     foreach ($test in @(
         'passgen-tests.exe',
+        'passgen-known-parts-tests.exe',
         'passgen-direct-combinations-tests.exe',
         'passgen-gpu-tests.exe',
         'passgen-gpu-engine-tests.exe',

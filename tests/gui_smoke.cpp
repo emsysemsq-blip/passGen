@@ -14,6 +14,7 @@
 #include <string>
 #include <chrono>
 #include <thread>
+#include <vector>
 #include "ui_ids.hpp"
 using namespace pg::ui;
 static std::wstring get(HWND h){int n=(int)SendMessageW(h,WM_GETTEXTLENGTH,0,0);std::wstring s(n+1,0);SendMessageW(h,WM_GETTEXT,n+1,(LPARAM)s.data());s.resize(n);return s;}
@@ -49,9 +50,10 @@ int main(int argc,char**){PROCESS_INFORMATION process{};HWND h=nullptr;std::file
  field(Input,L"\x0622\x0628");field(Output,out.wstring());click(Preview);require(get(GetDlgItem(h,Sample)).find(L"Candidates: 6")!=std::wstring::npos,"Preview default count");click(Start);wait(L"Complete.");std::ifstream f(out,std::ios::binary);std::string actual((std::istreambuf_iterator<char>(f)),{});f.close();require(actual==u8"آ\nب\nآآ\nآب\nبآ\nبب\n","GUI Unicode output exact");click(Resume);wait(L"Complete.");
  click(Resource70);require(IsWindowEnabled(GetDlgItem(h,Threads)),"Manual mode enables workers");
  field(Input,L"ab");field(Max,L"20");large=out;large+=L".large.txt";field(Output,large.wstring());click(Start);click(Stop);wait(L"Stopped safely.");click(Resume);wait(L"Complete.");std::ifstream big(large,std::ios::binary);std::string line,last;uint64_t count=0;while(std::getline(big,line)){last=line;++count;}big.close();require(count==2097150&&last==std::string(20,'b'),"GUI stop/resume exact count and final candidate");
+ click(KnownEnabled);SendMessageW(GetDlgItem(h,KnownPosition),CB_SETCURSEL,2,0);SendMessageW(h,WM_COMMAND,MAKEWPARAM(KnownPosition,CBN_SELCHANGE),0);
  SendMessageW(GetDlgItem(h,Words),BM_SETCHECK,BST_CHECKED,0);field(Input,L"a aa b");field(Min,L"3");field(Max,L"4");field(Prefix,L"A");field(Suffix,L"1");wordOutput=out;wordOutput+=L".words.txt";field(Output,wordOutput.wstring());click(Start);wait(L"Complete.");
  std::ifstream wordsFile(wordOutput,std::ios::binary);std::string wordData((std::istreambuf_iterator<char>(wordsFile)),{});wordsFile.close();require(wordData=="Aa1\nAb1\nAaa1\nAab1\nAba1\nAbb1\n","GUI final-character lengths and unique word aliases");
- SendMessageW(GetDlgItem(h,Words),BM_SETCHECK,BST_UNCHECKED,0);field(Min,L"");field(Prefix,L"");field(Suffix,L"");
+ click(KnownEnabled);SendMessageW(GetDlgItem(h,Words),BM_SETCHECK,BST_UNCHECKED,0);field(Min,L"");field(Prefix,L"");field(Suffix,L"");
  field(Input,L"ab");field(Symbol,L"!@!!");field(Min,L"1");field(Max,L"2");symbolOutput=out;symbolOutput+=L".symbols.txt";field(Output,symbolOutput.wstring());click(Preview);
  require(get(GetDlgItem(h,Sample)).find(L"Candidates: 20")!=std::wstring::npos,"manual symbol edit extends alphabet without duplicate tokens");
  click(Start);wait(L"Complete.");std::ifstream symbolFile(symbolOutput,std::ios::binary);std::string symbolData((std::istreambuf_iterator<char>(symbolFile)),{});symbolFile.close();
@@ -81,6 +83,22 @@ int main(int argc,char**){PROCESS_INFORMATION process{};HWND h=nullptr;std::file
  require(readLimits()==capped,"Per-word limit permits zero through two uses and keeps unlimited alternatives");
  SendMessageW(capCombo,CB_SETCURSEL,0,0);SendMessageW(h,WM_COMMAND,MAKEWPARAM(TokenCap,CBN_SELCHANGE),(LPARAM)capCombo);click(Resume);wait(L"Complete.");require(readLimits()==capped,"Resume preserves saved word caps despite form edits");
  SendMessageW(GetDlgItem(h,Words),BM_SETCHECK,BST_UNCHECKED,0);SendMessageW(GetDlgItem(h,TokenLengths),BM_SETCHECK,BST_UNCHECKED,0);
- if(argc>1){field(Input,L"ab12");field(Max,L"4");click(Preview);std::cout<<"SCREENSHOT_READY\n"<<std::flush;std::this_thread::sleep_for(std::chrono::seconds(15));}
+ // Each selected input source works independently; inactive fields are ignored.
+ std::vector<std::filesystem::path> placementOutputs;
+ auto generateCase=[&](const char* name,const std::string& expected){auto path=out;path+=std::string(".")+name+".txt";placementOutputs.push_back(path);field(Output,path.wstring());click(Start);wait(L"Complete.");std::ifstream file(path,std::ios::binary);std::string data((std::istreambuf_iterator<char>(file)),{});require(data==expected,name);};
+ auto mode=[&](int value){SendMessageW(GetDlgItem(h,KnownPosition),CB_SETCURSEL,value,0);SendMessageW(h,WM_COMMAND,MAKEWPARAM(KnownPosition,CBN_SELCHANGE),0);};
+ field(Input,L"ab");field(Min,L"4");field(Max,L"4");field(Prefix,L"Am1");field(Suffix,L"Am1");click(KnownEnabled);
+ mode(0);require(!IsWindowEnabled(GetDlgItem(h,Prefix))&&IsWindowEnabled(GetDlgItem(h,Suffix)),"Before enables only known end");generateCase("before","aAm1\nbAm1\n");
+ mode(1);require(IsWindowEnabled(GetDlgItem(h,Prefix))&&!IsWindowEnabled(GetDlgItem(h,Suffix)),"After enables only known start");generateCase("after","Am1a\nAm1b\n");
+ mode(2);field(Prefix,L"Am");field(Suffix,L"1");generateCase("middle","Ama1\nAmb1\n");
+ field(Prefix,L"Changed");field(Suffix,L"Changed");click(Resume);wait(L"Complete.");{std::ifstream file(placementOutputs.back(),std::ios::binary);std::string data((std::istreambuf_iterator<char>(file)),{});require(data=="Ama1\nAmb1\n","Resume ignores changed known parts");}
+ click(KnownEnabled);field(Min,L"");field(Max,L"1");generateCase("inactive-known","a\nb\n");
+ field(Input,L"");field(Symbol,L"!@!");generateCase("symbols-only","!\n@\n");field(Symbol,L"");field(Emoji,L"😀 😀");generateCase("emoji-only",u8"😀\n");field(Emoji,L"");
+ click(KnownEnabled);mode(1);field(Prefix,L"1245876454");field(Suffix,L"ignored");field(Min,L"");field(Max,L"");SendMessageW(GetDlgItem(h,Digit),BM_SETCHECK,BST_CHECKED,0);generateCase("fixed-only","1245876454\n");
+ click(Resume);wait(L"Complete.");require(get(GetDlgItem(h,Status)).find(L"Written 1 lines")!=std::wstring::npos,"Completed fixed-only resume never duplicates");
+ SendMessageW(GetDlgItem(h,Digit),BM_SETCHECK,BST_UNCHECKED,0);field(Prefix,L"آ😀");generateCase("unicode-fixed",u8"آ😀\n");
+ click(KnownEnabled);field(Input,L"ab12");field(Min,L"");field(Max,L"4");
+ if(argc>1){click(Preview);std::cout<<"SCREENSHOT_READY\n"<<std::flush;std::this_thread::sleep_for(std::chrono::seconds(15));}
+ for(const auto& path:placementOutputs){std::filesystem::remove(path);std::filesystem::remove(path.wstring()+L".pgstate");}
  PostMessageW(h,WM_CLOSE,0,0);require(WaitForSingleObject(process.hProcess,10000)==WAIT_OBJECT_0,"GUI closes");CloseHandle(process.hThread);CloseHandle(process.hProcess);for(auto& p:{out,large,wordOutput,symbolOutput,wordSymbolOutput,extraOutput,limitOutput,customOutput}){std::filesystem::remove(p);std::filesystem::remove(p.wstring()+L".pgstate");}std::cout<<"PASS: GUI optional manual symbols and persisted alphabet, later-rank preview, unique words and final lengths, large-space and default-alphabet preview, Unicode generation, stop, resume, exact count, clean close\n";return 0;
  }catch(const std::exception& e){std::cerr<<"FAIL: "<<e.what()<<"\n";if(process.hProcess)TerminateProcess(process.hProcess,1);return 1;}}
