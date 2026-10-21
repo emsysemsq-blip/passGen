@@ -1,0 +1,17 @@
+{
+  "release_sha256": "7724e900fce61dfb74773efa52d3aad074246c660f1d7fcb8065f047eedee808",
+  "release_bytes": 3372597,
+  "rebuilt_sha256": "7724e900fce61dfb74773efa52d3aad074246c660f1d7fcb8065f047eedee808",
+  "byte_identical": true,
+  "import_dlls": [
+    "COMCTL32.dll",
+    "comdlg32.dll",
+    "GDI32.dll",
+    "KERNEL32.dll",
+    "msvcrt.dll",
+    "USER32.dll"
+  ],
+  "authenticode_present": false,
+  "defender_executed": false,
+  "endpoint_file_hash_known": false
+}
